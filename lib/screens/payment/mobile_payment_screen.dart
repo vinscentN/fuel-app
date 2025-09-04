@@ -12,7 +12,6 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/success_screen.dart';
-import '../common/success_screen.dart';
 
 class MobilePaymentScreen extends StatefulWidget {
   const MobilePaymentScreen({super.key});
@@ -47,13 +46,9 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
       vsync: this,
     );
 
-    _slideAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _slideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
     _animationController.forward();
   }
@@ -82,10 +77,12 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
     if (value.length >= 3) {
       String formatted = '+${value.substring(0, 3)}';
       if (value.length > 3) {
-        formatted += ' ${value.substring(3, value.length > 5 ? 5 : value.length)}';
+        formatted +=
+            ' ${value.substring(3, value.length > 5 ? 5 : value.length)}';
       }
       if (value.length > 5) {
-        formatted += ' ${value.substring(5, value.length > 8 ? 8 : value.length)}';
+        formatted +=
+            ' ${value.substring(5, value.length > 8 ? 8 : value.length)}';
       }
       if (value.length > 8) {
         formatted += ' ${value.substring(8)}';
@@ -101,9 +98,15 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+    final paymentProvider = Provider.of<PaymentProvider>(
+      context,
+      listen: false,
+    );
 
-    final mobileNumber = _mobileController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final mobileNumber = _mobileController.text.replaceAll(
+      RegExp(r'[^\d]'),
+      '',
+    );
 
     final success = await paymentProvider.processPayment(
       userId: authProvider.currentUser!.id,
@@ -118,16 +121,19 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
     if (success && mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => const SuccessScreen(
-            title: 'Mobile Payment Successful!',
-            message: 'Payment processed via mobile money successfully.',
-          ),
+          builder:
+              (_) => const SuccessScreen(
+                title: 'Mobile Payment Successful!',
+                message: 'Payment processed via mobile money successfully.',
+              ),
         ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(paymentProvider.errorMessage ?? 'Mobile payment failed'),
+          content: Text(
+            paymentProvider.errorMessage ?? 'Mobile payment failed',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -138,10 +144,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        title: 'Mobile Money',
-        backgroundColor: navyBlue,
-      ),
+      appBar: CustomAppBar(title: 'Mobile Money', backgroundColor: navyBlue),
       body: Consumer<PaymentProvider>(
         builder: (context, paymentProvider, child) {
           return SlideTransition(
@@ -260,11 +263,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.phone_android,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: Icon(Icons.phone_android, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -306,22 +305,25 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected
-                            ? provider['color'] as Color
-                            : AppColors.border,
+                        color:
+                            isSelected
+                                ? provider['color'] as Color
+                                : AppColors.border,
                         width: isSelected ? 2 : 1,
                       ),
-                      color: isSelected
-                          ? (provider['color'] as Color).withOpacity(0.05)
-                          : Colors.transparent,
+                      color:
+                          isSelected
+                              ? (provider['color'] as Color).withOpacity(0.05)
+                              : Colors.transparent,
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color:
-                            (provider['color'] as Color).withOpacity(0.1),
+                            color: (provider['color'] as Color).withOpacity(
+                              0.1,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -333,14 +335,14 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
                         const SizedBox(width: 12),
                         Text(
                           provider['name'] as String,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge
-                              ?.copyWith(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyLarge?.copyWith(
                             color: AppColors.textPrimary,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            fontWeight:
+                                isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                           ),
                         ),
                         const Spacer(),
@@ -355,7 +357,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -423,9 +425,9 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
                   Expanded(
                     child: Text(
                       'Enter the mobile number registered with $_selectedProvider',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: lightNavyBlue,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: lightNavyBlue),
                     ),
                   ),
                 ],
@@ -443,29 +445,29 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
         CustomButton(
           onPressed: paymentProvider.isProcessing ? null : _processPayment,
           backgroundColor: navyBlue,
-          child: paymentProvider.isProcessing
-              ? const LoadingWidget(size: 24, color: Colors.white)
-              : const Text(
-            'Send Payment Request',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
+          child:
+              paymentProvider.isProcessing
+                  ? const LoadingWidget(size: 24, color: Colors.white)
+                  : const Text(
+                    'Send Payment Request',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
         ),
         const SizedBox(height: 12),
         CustomButton(
           onPressed:
-          paymentProvider.isProcessing ? null : () => Navigator.of(context).pop(),
+              paymentProvider.isProcessing
+                  ? null
+                  : () => Navigator.of(context).pop(),
           isOutlined: true,
           backgroundColor: AppColors.textSecondary,
           child: const Text(
             'Cancel',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ),
       ],

@@ -24,6 +24,10 @@ class Currency {
     );
   }
 
+  static get usd => null;
+
+  static get zwg => null;
+
   Map<String, dynamic> toJson() {
     return {
       'code': code,

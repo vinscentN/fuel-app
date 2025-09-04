@@ -9,10 +9,8 @@ import '../../utils/colors.dart';
 import '../../models/transaction.dart';
 import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
-import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/success_screen.dart';
-import '../common/success_screen.dart';
 
 // Card payment states
 enum CardPaymentState {
@@ -21,9 +19,8 @@ enum CardPaymentState {
   enteringPin,
   processing,
   success,
-  error
+  error,
 }
-
 
 class CardPaymentScreen extends StatefulWidget {
   const CardPaymentScreen({super.key});
@@ -64,21 +61,14 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
       vsync: this,
     );
 
-    _pulseAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
     _pulseController.repeat(reverse: true);
     _fadeController.forward();
@@ -134,7 +124,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
   void _onPinBackspace() {
     if (_pinController.text.isNotEmpty) {
       setState(() {
-        _pinController.text = _pinController.text.substring(0, _pinController.text.length - 1);
+        _pinController.text = _pinController.text.substring(
+          0,
+          _pinController.text.length - 1,
+        );
       });
       HapticFeedback.selectionClick();
     }
@@ -154,7 +147,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+    final paymentProvider = Provider.of<PaymentProvider>(
+      context,
+      listen: false,
+    );
 
     final cardDetails = {
       'cardNumber': _detectedCardNumber?.replaceAll(' ', '') ?? '',
@@ -181,10 +177,12 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => const SuccessScreen(
-                title: 'Payment Successful!',
-                message: 'Your fuel card payment has been processed successfully.',
-              ),
+              builder:
+                  (_) => const SuccessScreen(
+                    title: 'Payment Successful!',
+                    message:
+                        'Your fuel card payment has been processed successfully.',
+                  ),
             ),
           );
         }
@@ -282,11 +280,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.credit_card,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: Icon(Icons.credit_card, color: Colors.white, size: 24),
               ),
             ],
           ),
@@ -329,16 +323,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
                   decoration: BoxDecoration(
                     color: navyBlue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: navyBlue,
-                      width: 2,
-                    ),
+                    border: Border.all(color: navyBlue, width: 2),
                   ),
-                  child: Icon(
-                    Icons.credit_card,
-                    size: 48,
-                    color: navyBlue,
-                  ),
+                  child: Icon(Icons.credit_card, size: 48, color: navyBlue),
                 ),
               );
             },
@@ -355,9 +342,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
           const SizedBox(height: 16),
           Text(
             'Please insert your fuel card into the reader or tap it on the contactless area',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -375,16 +362,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
           decoration: BoxDecoration(
             color: Colors.green.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.green,
-              width: 2,
-            ),
+            border: Border.all(color: Colors.green, width: 2),
           ),
-          child: const Icon(
-            Icons.check_circle,
-            size: 48,
-            color: Colors.green,
-          ),
+          child: const Icon(Icons.check_circle, size: 48, color: Colors.green),
         ),
         const SizedBox(height: 32),
         Text(
@@ -429,11 +409,17 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
               height: 50,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: index < _pinController.text.length ? navyBlue : Colors.grey.shade300,
+                  color:
+                      index < _pinController.text.length
+                          ? navyBlue
+                          : Colors.grey.shade300,
                   width: 2,
                 ),
                 borderRadius: BorderRadius.circular(8),
-                color: index < _pinController.text.length ? navyBlue.withOpacity(0.1) : Colors.transparent,
+                color:
+                    index < _pinController.text.length
+                        ? navyBlue.withOpacity(0.1)
+                        : Colors.transparent,
               ),
               child: Center(
                 child: Text(
@@ -467,19 +453,34 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             // Numbers 1-3
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: ['1', '2', '3'].map((digit) => _buildKeypadButton(digit)).toList(),
+              children:
+                  [
+                    '1',
+                    '2',
+                    '3',
+                  ].map((digit) => _buildKeypadButton(digit)).toList(),
             ),
             const SizedBox(height: 16),
             // Numbers 4-6
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: ['4', '5', '6'].map((digit) => _buildKeypadButton(digit)).toList(),
+              children:
+                  [
+                    '4',
+                    '5',
+                    '6',
+                  ].map((digit) => _buildKeypadButton(digit)).toList(),
             ),
             const SizedBox(height: 16),
             // Numbers 7-9
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: ['7', '8', '9'].map((digit) => _buildKeypadButton(digit)).toList(),
+              children:
+                  [
+                    '7',
+                    '8',
+                    '9',
+                  ].map((digit) => _buildKeypadButton(digit)).toList(),
             ),
             const SizedBox(height: 16),
             // Clear, 0, Backspace
@@ -539,9 +540,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
         const SizedBox(height: 16),
         Text(
           'Please wait while we process your fuel card payment',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],
@@ -559,11 +560,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             color: Colors.green.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.check_circle,
-            size: 64,
-            color: Colors.green,
-          ),
+          child: const Icon(Icons.check_circle, size: 64, color: Colors.green),
         ),
         const SizedBox(height: 32),
         Text(
@@ -588,11 +585,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             color: Colors.red.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.error,
-            size: 64,
-            color: Colors.red,
-          ),
+          child: const Icon(Icons.error, size: 64, color: Colors.red),
         ),
         const SizedBox(height: 32),
         Text(
@@ -605,9 +598,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
         const SizedBox(height: 16),
         Text(
           _errorMessage ?? 'Please try again',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],
@@ -628,17 +621,15 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
         ],
       ),
       child: CustomButton(
-        onPressed: _currentState == CardPaymentState.processing
-            ? null
-            : () => Navigator.of(context).pop(),
+        onPressed:
+            _currentState == CardPaymentState.processing
+                ? null
+                : () => Navigator.of(context).pop(),
         isOutlined: true,
         backgroundColor: AppColors.textSecondary,
         child: const Text(
           'Cancel',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );

@@ -1,6 +1,5 @@
 // screens/payment/cash_payment_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../providers/fuel_provider.dart';
@@ -12,7 +11,6 @@ import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/success_screen.dart';
-import '../common/success_screen.dart';
 
 class CashPaymentScreen extends StatefulWidget {
   const CashPaymentScreen({super.key});
@@ -41,13 +39,9 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
     _animationController.forward();
   }
@@ -74,7 +68,10 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+    final paymentProvider = Provider.of<PaymentProvider>(
+      context,
+      listen: false,
+    );
 
     final success = await paymentProvider.processPayment(
       userId: authProvider.currentUser!.id,
@@ -89,16 +86,20 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
     if (success && mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => const SuccessScreen(
-            title: 'Cash Payment Confirmed!',
-            message: 'Transaction validated successfully with operator PIN.',
-          ),
+          builder:
+              (_) => const SuccessScreen(
+                title: 'Cash Payment Confirmed!',
+                message:
+                    'Transaction validated successfully with operator PIN.',
+              ),
         ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(paymentProvider.errorMessage ?? 'Payment validation failed'),
+          content: Text(
+            paymentProvider.errorMessage ?? 'Payment validation failed',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -120,10 +121,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        title: 'Cash Payment',
-        backgroundColor: navyBlue,
-      ),
+      appBar: CustomAppBar(title: 'Cash Payment', backgroundColor: navyBlue),
       body: Consumer3<FuelProvider, PaymentProvider, AuthProvider>(
         builder: (context, fuelProvider, paymentProvider, authProvider, child) {
           return Column(
@@ -136,9 +134,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildPinSection(),
-                    ],
+                    children: [_buildPinSection()],
                   ),
                 ),
               ),
@@ -229,11 +225,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.money,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: Icon(Icons.money, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -253,11 +245,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.security,
-                    color: navyBlue,
-                    size: 24,
-                  ),
+                  Icon(Icons.security, color: navyBlue, size: 24),
                   const SizedBox(width: 12),
                   Text(
                     'Enter Operator PIN',
@@ -319,11 +307,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: 16,
-                      ),
+                      Icon(Icons.check_circle, color: Colors.green, size: 16),
                       const SizedBox(width: 8),
                       Text(
                         'PIN Entered Successfully',
@@ -351,9 +335,9 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
                     Expanded(
                       child: Text(
                         'Demo PIN: 1234 (for testing purposes)',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: lightNavyBlue,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: lightNavyBlue),
                       ),
                     ),
                   ],
@@ -370,34 +354,34 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
     return Column(
       children: [
         CustomButton(
-          onPressed: paymentProvider.isProcessing || !_isPinEntered
-              ? null
-              : _processPayment,
+          onPressed:
+              paymentProvider.isProcessing || !_isPinEntered
+                  ? null
+                  : _processPayment,
           backgroundColor: navyBlue,
-          child: paymentProvider.isProcessing
-              ? const LoadingWidget(size: 24, color: Colors.white)
-              : const Text(
-            'Validate & Complete Transaction',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
+          child:
+              paymentProvider.isProcessing
+                  ? const LoadingWidget(size: 24, color: Colors.white)
+                  : const Text(
+                    'Validate & Complete Transaction',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
         ),
         const SizedBox(height: 12),
         CustomButton(
-          onPressed: paymentProvider.isProcessing
-              ? null
-              : () => Navigator.of(context).pop(),
+          onPressed:
+              paymentProvider.isProcessing
+                  ? null
+                  : () => Navigator.of(context).pop(),
           isOutlined: true,
           backgroundColor: AppColors.textSecondary,
           child: const Text(
             'Cancel',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ),
       ],

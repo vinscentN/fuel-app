@@ -3,11 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/fuel_provider.dart';
-import '../../utils/colors.dart';
-import '../../widgets/fuel/fuel_product_card.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../fuel/amount_input_screen.dart';
-import '../fuel/product_selection_screen.dart';
 import '../coupon/coupon_redemption_screen.dart';
 import '../auth/login_screen.dart';
 
@@ -46,21 +43,22 @@ class _DashboardScreenState extends State<DashboardScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+      ),
+    );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+      ),
+    );
 
     _animationController.forward();
   }
@@ -87,19 +85,15 @@ class _DashboardScreenState extends State<DashboardScreen>
   void _navigateToProductSelection(product) {
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
     fuelProvider.selectProduct(product);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AmountInputScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AmountInputScreen()));
   }
 
   void _navigateToCouponRedemption() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const CouponRedemptionScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CouponRedemptionScreen()));
   }
 
   Future<void> _handleLogout() async {
@@ -112,7 +106,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
-              (route) => false,
+          (route) => false,
         );
       }
     }
@@ -120,74 +114,77 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Future<bool> _showLogoutConfirmation() async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.logout_rounded,
-                color: Color(0xFF1A237E),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Logout',
-              style: TextStyle(
-                color: Color(0xFF1A237E),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to logout?',
-          style: TextStyle(
-            color: Color(0xFF1A237E),
-            fontSize: 16,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1A237E).withOpacity(0.7),
-            ),
-            child: const Text('Cancel'),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
+          context: context,
+          builder:
+              (context) => AlertDialog(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                 ),
+                backgroundColor: Colors.white,
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Color(0xFF1A237E),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Logout',
+                      style: TextStyle(
+                        color: Color(0xFF1A237E),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  'Are you sure you want to logout?',
+                  style: TextStyle(color: Color(0xFF1A237E), fontSize: 16),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(
+                        0xFF1A237E,
+                      ).withValues(alpha: 0.7),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              child: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
   @override
@@ -201,10 +198,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             child: _buildModernHeader(),
           ),
           Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: _buildBody(),
-            ),
+            child: FadeTransition(opacity: _fadeAnimation, child: _buildBody()),
           ),
         ],
       ),
@@ -226,21 +220,12 @@ class _DashboardScreenState extends State<DashboardScreen>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1A237E),
-                Color(0xFF3949AB),
-                Color(0xFF5C6BC0),
-              ],
+              colors: [Color(0xFF1A237E), Color(0xFF3949AB), Color(0xFF5C6BC0)],
             ),
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(28),
-            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
           ),
           child: Column(
-            children: [
-              _buildHeaderTop(user),
-              const SizedBox(height: 20),
-            ],
+            children: [_buildHeaderTop(user), const SizedBox(height: 20)],
           ),
         );
       },
@@ -336,10 +321,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -348,10 +333,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         icon: Icon(icon, color: Colors.white, size: 20),
         tooltip: tooltip,
         padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
-        ),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       ),
     );
   }
@@ -420,7 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Text(
                   'Select a product to start transaction',
                   style: TextStyle(
-                    color: const Color(0xFF1A237E).withOpacity(0.6),
+                    color: const Color(0xFF1A237E).withValues(alpha: 0.6),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -434,7 +416,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildProductsList(List products, List currencies) {
-    final defaultCurrency = currencies.isNotEmpty ? currencies.first.code : 'USD';
+    final defaultCurrency =
+        currencies.isNotEmpty ? currencies.first.code : 'USD';
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -620,13 +603,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFF1A237E).withOpacity(0.1),
-                        const Color(0xFF3949AB).withOpacity(0.1),
+                        const Color(0xFF1A237E).withValues(alpha: 0.1),
+                        const Color(0xFF3949AB).withValues(alpha: 0.1),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: const Color(0xFF1A237E).withOpacity(0.1),
+                      color: const Color(0xFF1A237E).withValues(alpha: 0.1),
                       width: 1,
                     ),
                   ),
@@ -643,6 +626,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+
                     children: [
                       Text(
                         product.name ?? 'Unknown Product',
@@ -652,20 +636,20 @@ class _DashboardScreenState extends State<DashboardScreen>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        product.description ?? 'Fuel Product',
-                        style: TextStyle(
-                          color: const Color(0xFF1A237E).withOpacity(0.7),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        product.prices.entries
+                            .map((e) => "${e.key}: ${e.value}")
+                            .join(", "),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
+
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
@@ -765,7 +749,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

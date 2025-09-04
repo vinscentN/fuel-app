@@ -71,13 +71,9 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
     _animationController.forward();
   }
@@ -102,17 +98,18 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
 
     final code = _codeController.text.trim().toUpperCase();
     final coupon = _dummyCoupons.firstWhere(
-          (c) => c.code == code && c.status == CouponStatus.active,
-      orElse: () => Coupon(
-        id: '',
-        code: '',
-        title: '',
-        description: '',
-        type: CouponType.percentage,
-        value: 0,
-        expiryDate: DateTime.now(),
-        status: CouponStatus.invalid,
-      ),
+      (c) => c.code == code && c.status == CouponStatus.active,
+      orElse:
+          () => Coupon(
+            id: '',
+            code: '',
+            title: '',
+            description: '',
+            type: CouponType.percentage,
+            value: 0,
+            expiryDate: DateTime.now(),
+            status: CouponStatus.invalid,
+          ),
     );
 
     setState(() {
@@ -140,14 +137,16 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => SuccessScreen(
-            title: 'Coupon Redeemed!',
-            message: 'Your coupon "${_validatedCoupon!.title}" has been successfully applied.',
-            actionText: 'Continue Shopping',
-            onAction: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-          ),
+          builder:
+              (_) => SuccessScreen(
+                title: 'Coupon Redeemed!',
+                message:
+                    'Your coupon "${_validatedCoupon!.title}" has been successfully applied.',
+                actionText: 'Continue Shopping',
+                onAction: () {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+              ),
         ),
       );
     }
@@ -208,10 +207,7 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.secondary.withOpacity(0.1),
-              Colors.white,
-            ],
+            colors: [AppColors.secondary.withOpacity(0.1), Colors.white],
           ),
         ),
         child: Column(
@@ -241,9 +237,9 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
             const SizedBox(height: 8),
             Text(
               'Enter your coupon code to get instant discounts on fuel purchases',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -292,22 +288,23 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
             CustomButton(
               onPressed: _isValidating ? null : _validateCoupon,
               backgroundColor: AppColors.secondary,
-              child: _isValidating
-                  ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-                  : const Text(
-                'Validate Coupon',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child:
+                  _isValidating
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : const Text(
+                        'Validate Coupon',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
             ),
           ],
         ),
@@ -326,10 +323,7 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.success.withOpacity(0.1),
-              Colors.white,
-            ],
+            colors: [AppColors.success.withOpacity(0.1), Colors.white],
           ),
         ),
         child: Column(
@@ -370,9 +364,9 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
             const SizedBox(height: 8),
             Text(
               _validatedCoupon!.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
             Container(
@@ -385,10 +379,19 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
                 children: [
                   _buildDetailRow('Discount:', _getDiscountText()),
                   if (_validatedCoupon!.minimumAmount != null)
-                    _buildDetailRow('Minimum Amount:', '\$${_validatedCoupon!.minimumAmount!.toStringAsFixed(2)}'),
+                    _buildDetailRow(
+                      'Minimum Amount:',
+                      '\$${_validatedCoupon!.minimumAmount!.toStringAsFixed(2)}',
+                    ),
                   if (_validatedCoupon!.maximumDiscount != null)
-                    _buildDetailRow('Maximum Discount:', '\$${_validatedCoupon!.maximumDiscount!.toStringAsFixed(2)}'),
-                  _buildDetailRow('Expires:', _formatDate(_validatedCoupon!.expiryDate)),
+                    _buildDetailRow(
+                      'Maximum Discount:',
+                      '\$${_validatedCoupon!.maximumDiscount!.toStringAsFixed(2)}',
+                    ),
+                  _buildDetailRow(
+                    'Expires:',
+                    _formatDate(_validatedCoupon!.expiryDate),
+                  ),
                 ],
               ),
             ),
@@ -406,9 +409,9 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           Text(
             value,
@@ -448,11 +451,7 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppColors.info,
-                  size: 20,
-                ),
+                Icon(Icons.info_outline, color: AppColors.info, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'Demo Coupon Codes',
@@ -476,7 +475,10 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.secondary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -513,7 +515,7 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -527,22 +529,23 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
           CustomButton(
             onPressed: _isValidating ? null : _redeemCoupon,
             backgroundColor: AppColors.success,
-            child: _isValidating
-                ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-                : const Text(
-              'Redeem Coupon',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child:
+                _isValidating
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Text(
+                      'Redeem Coupon',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
           ),
         if (_validatedCoupon != null) const SizedBox(height: 12),
         CustomButton(
@@ -551,10 +554,7 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
           backgroundColor: AppColors.textSecondary,
           child: const Text(
             'Back to Dashboard',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ),
       ],
@@ -565,13 +565,12 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
 class UpperCaseTextFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue,
-      TextEditingValue newValue,
-      ) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     return TextEditingValue(
       text: newValue.text.toUpperCase(),
       selection: newValue.selection,
     );
   }
 }
-
