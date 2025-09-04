@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'providers/auth_provider.dart';
 import 'providers/fuel_provider.dart';
 import 'providers/payment_provider.dart';
-import 'routes/app_routes.dart';
 import 'utils/colors.dart';
 import 'screens/auth/login_screen.dart';
 
@@ -39,10 +38,7 @@ class FuelStationApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(
@@ -63,7 +59,7 @@ class FuelStationApp extends StatelessWidget {
               vertical: 16,
             ),
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 4,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -72,7 +68,7 @@ class FuelStationApp extends StatelessWidget {
           ),
         ),
         home: const LoginScreen(),
-              ),
+      ),
     );
   }
 }

@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../providers/fuel_provider.dart';
 import '../../utils/colors.dart';
 import '../../widgets/common/app_bar_widget.dart';
-import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../payment/payment_method_screen.dart';
 
@@ -38,13 +37,9 @@ class _AmountInputScreenState extends State<AmountInputScreen>
       vsync: this,
     );
 
-    _slideAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _slideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
     _animationController.forward();
   }
@@ -65,7 +60,9 @@ class _AmountInputScreenState extends State<AmountInputScreen>
     fuelProvider.setAmount(amount);
 
     if (fuelProvider.selectedQuantity > 0) {
-      _quantityController.text = fuelProvider.selectedQuantity.toStringAsFixed(2);
+      _quantityController.text = fuelProvider.selectedQuantity.toStringAsFixed(
+        2,
+      );
     }
   }
 
@@ -90,11 +87,9 @@ class _AmountInputScreenState extends State<AmountInputScreen>
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const PaymentMethodScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const PaymentMethodScreen()));
   }
 
   void _showErrorMessage(String message) {
@@ -113,10 +108,8 @@ class _AmountInputScreenState extends State<AmountInputScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        title: 'Enter Amount',
-        backgroundColor: navyBlue,
-      ),
+      appBar: CustomAppBar(title: 'Enter Amount', backgroundColor: navyBlue),
+
       body: Consumer<FuelProvider>(
         builder: (context, fuelProvider, child) {
           final product = fuelProvider.selectedProduct;
@@ -179,11 +172,7 @@ class _AmountInputScreenState extends State<AmountInputScreen>
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.local_gas_station,
-              color: Colors.white,
-              size: 18,
-            ),
+            child: Icon(Icons.local_gas_station, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -200,10 +189,7 @@ class _AmountInputScreenState extends State<AmountInputScreen>
                 ),
                 Text(
                   '${currency.symbol}${price.toStringAsFixed(2)}/L',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
             ),
@@ -252,7 +238,10 @@ class _AmountInputScreenState extends State<AmountInputScreen>
                       'Amount',
                       style: TextStyle(
                         color: _isAmountInput ? Colors.white : Colors.grey[600],
-                        fontWeight: _isAmountInput ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight:
+                            _isAmountInput
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
@@ -282,8 +271,12 @@ class _AmountInputScreenState extends State<AmountInputScreen>
                     Text(
                       'Liters',
                       style: TextStyle(
-                        color: !_isAmountInput ? Colors.white : Colors.grey[600],
-                        fontWeight: !_isAmountInput ? FontWeight.w600 : FontWeight.normal,
+                        color:
+                            !_isAmountInput ? Colors.white : Colors.grey[600],
+                        fontWeight:
+                            !_isAmountInput
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
@@ -330,7 +323,9 @@ class _AmountInputScreenState extends State<AmountInputScreen>
               label: 'Amount (${currency.symbol})',
               hint: 'Enter amount',
               prefixIcon: Icons.attach_money,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
@@ -355,7 +350,9 @@ class _AmountInputScreenState extends State<AmountInputScreen>
               label: 'Quantity (Liters)',
               hint: 'Enter liters',
               prefixIcon: Icons.local_gas_station,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
@@ -392,10 +389,7 @@ class _AmountInputScreenState extends State<AmountInputScreen>
                     _isAmountInput
                         ? 'Quantity calculated automatically'
                         : 'Amount calculated automatically',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: lightNavyBlue,
-                    ),
+                    style: TextStyle(fontSize: 12, color: lightNavyBlue),
                   ),
                 ),
               ],
@@ -424,12 +418,15 @@ class _AmountInputScreenState extends State<AmountInputScreen>
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: Text(
-              'Proceed to Payment',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: canProceed ? Colors.white : Colors.grey[600],
+            child: Center(
+              child: Text(
+                'Proceed to Payment',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: canProceed ? Colors.white : Colors.grey[600],
+                  height: 0.4,
+                ),
               ),
             ),
           ),

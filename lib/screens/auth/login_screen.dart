@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../utils/colors.dart';
-import '../../widgets/common/auth_custom_text_field.dart';
-import '../../widgets/common/custom_button.dart';
-import '../../widgets/common/loading_widget.dart';
 import '../home/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -32,21 +28,22 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
+    );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+      ),
+    );
 
     _animationController.forward();
   }
@@ -105,18 +102,14 @@ class _LoginScreenState extends State<LoginScreen>
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
           ],
         ),
         backgroundColor: const Color(0xFFE74C3C),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.all(16),
         elevation: 8,
         duration: const Duration(seconds: 4),
@@ -178,11 +171,7 @@ class _LoginScreenState extends State<LoginScreen>
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1A237E),
-                Color(0xFF3949AB),
-                Color(0xFF5C6BC0),
-              ],
+              colors: [Color(0xFF1A237E), Color(0xFF3949AB), Color(0xFF5C6BC0)],
             ),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
@@ -224,14 +213,12 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Stylish Title with gradient text
         ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [
-              Color(0xFF1A237E),
-              Color(0xFF3949AB),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ).createShader(bounds),
+          shaderCallback:
+              (bounds) => const LinearGradient(
+                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ).createShader(bounds),
           child: Text(
             'Fuel Mate',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -333,7 +320,9 @@ class _LoginScreenState extends State<LoginScreen>
                       const SizedBox(width: 12),
                       Text(
                         'Welcome Back',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(
                           color: const Color(0xFF1A237E),
                           fontWeight: FontWeight.bold,
                           fontSize: 22,
@@ -465,16 +454,17 @@ class _LoginScreenState extends State<LoginScreen>
             fontSize: 14,
             fontWeight: FontWeight.w400,
           ),
-          prefixIcon: prefixIcon != null
-              ? Container(
-            margin: const EdgeInsets.only(left: 4, right: 8),
-            child: Icon(
-              prefixIcon,
-              color: const Color(0xFF1A237E).withOpacity(0.6),
-              size: 20,
-            ),
-          )
-              : null,
+          prefixIcon:
+              prefixIcon != null
+                  ? Container(
+                    margin: const EdgeInsets.only(left: 4, right: 8),
+                    child: Icon(
+                      prefixIcon,
+                      color: const Color(0xFF1A237E).withOpacity(0.6),
+                      size: 20,
+                    ),
+                  )
+                  : null,
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(
@@ -501,10 +491,7 @@ class _LoginScreenState extends State<LoginScreen>
         gradient: const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            Color(0xFF1A237E),
-            Color(0xFF3949AB),
-          ],
+          colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
         ),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
@@ -540,22 +527,22 @@ class _LoginScreenState extends State<LoginScreen>
                 ],
                 isLoading
                     ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    strokeWidth: 2,
-                  ),
-                )
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2,
+                      ),
+                    )
                     : const Text(
-                  'Sign In',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                      'Sign In',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
               ],
             ),
           ),
