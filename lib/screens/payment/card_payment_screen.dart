@@ -1,9 +1,12 @@
-// screens/payment/card_payment_screen.dart
+﻿// screens/payment/card_payment_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:provider/provider.dart';
+import 'package:fuels_app/aisino_pos_sdk.dart';
 import '../../providers/fuel_provider.dart';
 import '../../providers/payment_provider.dart';
+import '../../providers/pos_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/colors.dart';
 import '../../models/transaction.dart';
@@ -13,6 +16,7 @@ import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/success_screen.dart';
 import '../common/success_screen.dart';
+import '../common/operator_code_screen.dart';
 
 // Card payment states
 enum CardPaymentState {
@@ -35,20 +39,21 @@ class CardPaymentScreen extends StatefulWidget {
 class _CardPaymentScreenState extends State<CardPaymentScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _pinController = TextEditingController();
+  String _pin = '';
 
   late AnimationController _pulseController;
   late AnimationController _fadeController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _fadeAnimation;
 
-  // Navy blue color scheme
-  static const Color navyBlue = Color(0xFF1E3A8A);
-  static const Color lightNavyBlue = Color(0xFF3B82F6);
+  // Use app navy color via AppColors.primary
 
   CardPaymentState _currentState = CardPaymentState.waitingForCard;
-  String? _detectedCardNumber;
+  // Card number display handling
+  String? _cardPanRaw;    // full PAN (or UID fallback)
+  String? _cardPanMasked; // masked for display/receipts
   String? _errorMessage;
+  Map<String, dynamic>? _rawNfcData;
 
   @override
   void initState() {
@@ -83,58 +88,120 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
     _pulseController.repeat(reverse: true);
     _fadeController.forward();
 
-    // Simulate card detection after 3 seconds for demo
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _currentState == CardPaymentState.waitingForCard) {
-        _onCardDetected();
-      }
-    });
+    // Start real NFC listening using platform channel
+    _beginNfcRead();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
     _fadeController.dispose();
-    _pinController.dispose();
+    // no controller to dispose
     super.dispose();
   }
 
-  void _onCardDetected() {
+  Future<void> _beginNfcRead() async {
     setState(() {
-      _currentState = CardPaymentState.cardDetected;
-      _detectedCardNumber = "**** **** **** 1234"; // Simulate detected card
+      _currentState = CardPaymentState.waitingForCard;
+      _errorMessage = null;
+      _rawNfcData = null;
+      _cardPanRaw = null;
+      _cardPanMasked = null;
     });
 
-    HapticFeedback.lightImpact();
+    try {
+      final available = await AisinoPosSdk.checkNfcAvailability();
+      if (available != true) {
+        setState(() {
+          _currentState = CardPaymentState.error;
+          _errorMessage = 'NFC not available or SDK not initialized';
+        });
+        return;
+      }
 
-    // Show card detected for 2 seconds, then request PIN
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
+      final data = await AisinoPosSdk.startNfcTransaction();
+      if (!mounted) return;
+
+      if (data != null) {
+        _rawNfcData = Map<String, dynamic>.from(data);
+        final pan = (_rawNfcData!["pan"] ?? '').toString();
+        final uid = (_rawNfcData!["uid_raw"] ?? '').toString();
+        if (pan.isNotEmpty) {
+          debugPrint('Card PAN read: $pan');
+        } else {
+          debugPrint('NFC UID read: $uid');
+        }
+
+        // Prefer PAN (fallback to UID). Keep both raw and masked variants
+        final chosen = pan.isNotEmpty ? pan : uid;
+        final displayPan = _maskPan(chosen);
+
+        setState(() {
+          _cardPanRaw = chosen;
+          _cardPanMasked = displayPan;
+          _currentState = CardPaymentState.cardDetected;
+        });
+
+        HapticFeedback.lightImpact();
+
+        // Proceed to PIN after short acknowledgement
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
         setState(() {
           _currentState = CardPaymentState.enteringPin;
         });
+      } else {
+        setState(() {
+          _currentState = CardPaymentState.error;
+          _errorMessage = 'Failed to read NFC card';
+        });
+        // Auto-retry back to waiting
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) _beginNfcRead();
+        });
       }
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _currentState = CardPaymentState.error;
+        _errorMessage = 'NFC error: ${e.toString()}';
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _beginNfcRead();
+      });
+    }
+  }
+
+  String _maskPan(String pan) {
+    if (pan.isEmpty) return '';
+    // Keep last 4, mask others; group in 4s for readability
+    final clean = pan.replaceAll(' ', '');
+    if (clean.length <= 4) return clean;
+    final masked = '*' * (clean.length - 4) + clean.substring(clean.length - 4);
+    final buf = StringBuffer();
+    for (int i = 0; i < masked.length; i++) {
+      if (i > 0 && i % 4 == 0) buf.write(' ');
+      buf.write(masked[i]);
+    }
+    return buf.toString();
   }
 
   void _onPinDigitPressed(String digit) {
-    if (_pinController.text.length < 4) {
+    if (_pin.length < 4) {
       setState(() {
-        _pinController.text += digit;
+        _pin += digit;
       });
-
       HapticFeedback.selectionClick();
-
-      if (_pinController.text.length == 4) {
+      if (_pin.length == 4) {
         _processPayment();
       }
     }
   }
 
   void _onPinBackspace() {
-    if (_pinController.text.isNotEmpty) {
+    if (_pin.isNotEmpty) {
       setState(() {
-        _pinController.text = _pinController.text.substring(0, _pinController.text.length - 1);
+        _pin = _pin.substring(0, _pin.length - 1);
       });
       HapticFeedback.selectionClick();
     }
@@ -142,7 +209,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
 
   void _onPinClear() {
     setState(() {
-      _pinController.clear();
+      _pin = '';
     });
     HapticFeedback.selectionClick();
   }
@@ -156,44 +223,72 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
     final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
 
+    // Guard: ensure required sale context is available
+    if (/* authProvider.currentUser == null || */
+        fuelProvider.selectedProduct == null ||
+        fuelProvider.selectedCurrency == null) {
+      setState(() {
+        _currentState = CardPaymentState.enteringPin;
+        _errorMessage = 'Missing sale details. Please restart the sale.';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing sale details. Please restart the sale.')),
+      );
+      return;
+    }
+
+    // Prefer PAN to send to backend; fall back to UID only if PAN missing
     final cardDetails = {
-      'cardNumber': _detectedCardNumber?.replaceAll(' ', '') ?? '',
-      'pin': _pinController.text,
+      'cardNumber': (_rawNfcData?['pan'] ?? _rawNfcData?['uid_raw'] ?? '').toString(),
+      'pin': _pin,
+      'nfc': _rawNfcData,
     };
 
+    // Ask for operator code as last step before submission
+    final operatorCode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const OperatorCodeScreen(
+          title: 'Operator Code',
+          subtitle: 'Enter your operator code to confirm this card transaction',
+        ),
+      ),
+    );
+    if (operatorCode == null || operatorCode.isEmpty) {
+      setState(() {
+        _currentState = CardPaymentState.enteringPin;
+      });
+      return;
+    }
+
     final success = await paymentProvider.processPayment(
-      userId: authProvider.currentUser!.id,
+      userId: authProvider.currentUser?.id ?? '0',
       productId: fuelProvider.selectedProduct!.id,
       currencyCode: fuelProvider.selectedCurrency!.code,
       amount: fuelProvider.selectedAmount,
       quantity: fuelProvider.selectedQuantity,
       paymentMethod: PaymentMethod.card,
       cardDetails: cardDetails,
+      operatorPin: operatorCode,
     );
 
     if (success && mounted) {
-      setState(() {
-        _currentState = CardPaymentState.success;
-      });
+      // Fire receipt printing using native printer (non-blocking)
+      _printReceiptSafely();
 
-      // Navigate to success screen after showing success state
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => const SuccessScreen(
-                title: 'Payment Successful!',
-                message: 'Your fuel card payment has been processed successfully.',
-              ),
-            ),
-          );
-        }
-      });
+      // Navigate directly to the final success screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const SuccessScreen(
+            title: 'Payment Successful!',
+            message: 'Your fuel card payment has been processed successfully.',
+          ),
+        ),
+      );
     } else if (mounted) {
       setState(() {
         _currentState = CardPaymentState.error;
         _errorMessage = paymentProvider.errorMessage ?? 'Payment failed';
-        _pinController.clear();
+        _pin = '';
       });
 
       // Return to PIN entry after showing error
@@ -208,34 +303,118 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
     }
   }
 
+  Future<void> _printReceiptSafely() async {
+    try {
+      final posProvider = Provider.of<PosProvider>(context, listen: false);
+      final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+
+      // Prefer receipt data from API if available
+      final r = paymentProvider.receiptData;
+      if (r != null && r.isNotEmpty) {
+        final unit = _unitShort(fuelProvider.selectedProduct?.unitOfMeasure);
+        final operatorName = (r['attendant'] ?? authProvider.currentUser?.fullName ?? '').toString();
+        await posProvider.printReceiptCopy(copyType: 'CUSTOMER COPY', 
+          stationName: (r['stationName'] ?? '').toString(),
+          address: (r['address'] ?? '').toString(),
+          phone: (r['phone'] ?? '').toString(),
+          date: (r['date'] ?? '').toString(),
+          time: (r['time'] ?? '').toString(),
+          pumpNo: (r['pumpNo'] ?? '').toString(),
+          product: (r['product'] ?? '').toString(),
+          unit: unit,
+          litres: (r['litres'] ?? '').toString(),
+          pricePerLitre: (r['pricePerLitre'] ?? '').toString(),
+          total: (r['total'] ?? '').toString(),
+          payment: (r['payment'] ?? '').toString(),
+          cardNo: (r['cardNo'] ?? _cardPanMasked ?? '').toString(),
+          authNo: (r['authNo'] ?? '').toString(),
+          rrn: (r['rrn'] ?? '').toString(),
+          operatorName: operatorName,
+        );
+        return;
+      }
+
+      // Fallback to locally-computed receipt
+      final product = fuelProvider.selectedProduct;
+      final currency = fuelProvider.selectedCurrency;
+      final txn = paymentProvider.currentTransaction;
+
+      final stationName = product?.serviceStationName
+          ?? authProvider.currentUser?.serviceStationName
+          ?? 'Fuel Station';
+      final address = '';
+      final phone = '';
+
+      final now = DateTime.now();
+      String two(int n) => n.toString().padLeft(2, '0');
+      final date = '${now.year}-${two(now.month)}-${two(now.day)}';
+      final time = '${two(now.hour)}:${two(now.minute)}:${two(now.second)}';
+
+      final pumpNo = '1';
+      final productName = product?.productName ?? 'Fuel';
+      final litres = fuelProvider.selectedQuantity.toStringAsFixed(2);
+      final pricePerLitre = product?.price.toStringAsFixed(2) ?? '0.00';
+      final total = currency != null
+          ? '${currency.symbol}${fuelProvider.selectedAmount.toStringAsFixed(2)}'
+          : fuelProvider.selectedAmount.toStringAsFixed(2);
+      final payment = 'card';
+      final cardNo = _cardPanMasked ?? '';
+      final authNo = txn?.referenceNumber ?? txn?.id ?? '';
+      final rrn = txn?.id ?? txn?.referenceNumber ?? '';
+
+      final unit = _unitShort(product?.unitOfMeasure);
+      await posProvider.printReceiptCopy(copyType: 'CUSTOMER COPY', 
+        stationName: stationName,
+        address: address,
+        phone: phone,
+        date: date,
+        time: time,
+        pumpNo: pumpNo,
+        product: productName,
+        unit: unit,
+        litres: litres,
+        pricePerLitre: pricePerLitre,
+        total: total,
+        payment: payment,
+        cardNo: cardNo,
+        authNo: authNo,
+        rrn: rrn,
+        operatorName: authProvider.currentUser?.fullName ?? '',
+      );
+    } catch (e) {
+      debugPrint('Receipt print failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        title: 'Fuel Card Payment',
-        backgroundColor: navyBlue,
-      ),
-      body: Consumer<PaymentProvider>(
+  return Scaffold(
+    backgroundColor: AppColors.background,
+    appBar: CustomAppBar(
+      title: 'Fuel Card Payment',
+      backgroundColor: AppColors.primary,
+    ),
+    body: SafeArea(
+      child: Consumer<PaymentProvider>(
         builder: (context, paymentProvider, child) {
           return Column(
             children: [
               _buildTransactionSummary(),
               Expanded(
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24.0),
                   child: _buildCurrentStateWidget(),
                 ),
               ),
-              _buildBottomActions(),
             ],
           );
         },
       ),
-    );
-  }
-
-  Widget _buildTransactionSummary() {
+    ),
+  );
+}Widget _buildTransactionSummary() {
     return Consumer<FuelProvider>(
       builder: (context, fuelProvider, child) {
         final currency = fuelProvider.selectedCurrency!;
@@ -243,11 +422,11 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
           margin: const EdgeInsets.all(16.0),
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: navyBlue,
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: navyBlue.withOpacity(0.3),
+                color: AppColors.primary.withOpacity(0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -272,6 +451,25 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 22,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Quantity',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '${fuelProvider.selectedQuantity.toStringAsFixed(2)} ${_unitShort(fuelProvider.selectedProduct?.unitOfMeasure)}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -327,23 +525,23 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
                   width: 120,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: navyBlue.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: navyBlue,
+                      color: AppColors.primary,
                       width: 2,
                     ),
                   ),
                   child: Icon(
                     Icons.credit_card,
                     size: 48,
-                    color: navyBlue,
+                    color: AppColors.primary,
                   ),
                 ),
               );
             },
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Text(
             'Insert or Tap Your Fuel Card',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -352,7 +550,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
             'Please insert your fuel card into the reader or tap it on the contactless area',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -386,7 +584,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             color: Colors.green,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 16),
         Text(
           'Card Detected!',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -394,9 +592,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Text(
-          'Card: $_detectedCardNumber',
+          'Card: ${_cardPanMasked ?? ''}',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
@@ -407,52 +605,59 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
   }
 
   Widget _buildPinEntry() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Enter Your PIN',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(bottom: bottom > 0 ? bottom : 0),
+      child: Column(
+        children: [
+          Text(
+            'Enter Your PIN',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 32),
-
-        // PIN display
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(4, (index) {
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: index < _pinController.text.length ? navyBlue : Colors.grey.shade300,
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                color: index < _pinController.text.length ? navyBlue.withOpacity(0.1) : Colors.transparent,
+          if ((_cardPanRaw ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Card: ${_cardPanRaw!}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
-              child: Center(
-                child: Text(
-                  index < _pinController.text.length ? '•' : '',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-
-        const SizedBox(height: 32),
-
-        // PIN keypad
-        _buildPinKeypad(),
-      ],
+            ),
+          ],
+          const SizedBox(height: 24),
+          PinCodeTextField(
+            appContext: context,
+            length: 4,
+            obscureText: true,
+            obscuringCharacter: '*',
+            keyboardType: TextInputType.number,
+            animationType: AnimationType.fade,
+            pinTheme: PinTheme(
+              shape: PinCodeFieldShape.box,
+              borderRadius: BorderRadius.circular(12),
+              fieldHeight: bottom > 0 ? 50 : 60,
+              fieldWidth: bottom > 0 ? 50 : 60,
+              activeFillColor: AppColors.primary.withOpacity(0.1),
+              inactiveFillColor: AppColors.surfaceVariant,
+              selectedFillColor: AppColors.primary.withOpacity(0.2),
+              activeColor: AppColors.primary,
+              inactiveColor: AppColors.border,
+              selectedColor: AppColors.primary,
+            ),
+            enableActiveFill: true,
+            onCompleted: (v) { setState(() { _pin = v; }); _processPayment(); },
+            onChanged: (v) => setState(() { _pin = v; }),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _pin.length == 4 ? _processPayment : null,
+            child: const Text('Confirm PIN'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -488,7 +693,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
               children: [
                 _buildKeypadButton('Clear', onTap: _onPinClear),
                 _buildKeypadButton('0'),
-                _buildKeypadButton('⌫', onTap: _onPinBackspace),
+                _buildKeypadButton('DEL', onTap: _onPinBackspace),
               ],
             ),
           ],
@@ -505,9 +710,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: navyBlue.withOpacity(0.1),
+          color: AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: navyBlue.withOpacity(0.3)),
+          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
         ),
         child: Center(
           child: Text(
@@ -515,7 +720,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             style: TextStyle(
               fontSize: text == 'Clear' ? 12 : 18,
               fontWeight: FontWeight.bold,
-              color: navyBlue,
+              color: AppColors.primary,
             ),
           ),
         ),
@@ -527,8 +732,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        LoadingWidget(size: 64, color: navyBlue),
-        const SizedBox(height: 32),
+        LoadingWidget(size: 48, color: AppColors.primary),
+        const SizedBox(height: 16),
         Text(
           'Processing Payment...',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -565,7 +770,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
             color: Colors.green,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 16),
         Text(
           'Payment Successful!',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -614,33 +819,29 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
     );
   }
 
-  Widget _buildBottomActions() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 24.0),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: CustomButton(
-        onPressed: _currentState == CardPaymentState.processing
-            ? null
-            : () => Navigator.of(context).pop(),
-        isOutlined: true,
-        backgroundColor: AppColors.textSecondary,
-        child: const Text(
-          'Cancel',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
+  // Cancel button removed as requested
+
+  String _unitShort(String? uom) {
+    final code = (uom ?? 'L').trim().toUpperCase();
+    switch (code) {
+      case 'L':
+      case 'LT':
+      case 'LTR':
+      case 'LITRE':
+      case 'LITER':
+        return 'L';
+      case 'KG':
+      case 'KGS':
+      case 'KILOGRAM':
+      case 'KILOGRAMS':
+        return 'KG';
+      default:
+        return code;
+    }
   }
 }
+
+
+
+
+

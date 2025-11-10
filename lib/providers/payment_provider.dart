@@ -10,11 +10,13 @@ class PaymentProvider extends ChangeNotifier {
   bool _isProcessing = false;
   String? _errorMessage;
   Transaction? _currentTransaction;
+  Map<String, dynamic>? _receiptData;
 
   PaymentMethod? get selectedPaymentMethod => _selectedPaymentMethod;
   bool get isProcessing => _isProcessing;
   String? get errorMessage => _errorMessage;
   Transaction? get currentTransaction => _currentTransaction;
+  Map<String, dynamic>? get receiptData => _receiptData;
 
   void selectPaymentMethod(PaymentMethod method) {
     _selectedPaymentMethod = method;
@@ -42,6 +44,7 @@ class PaymentProvider extends ChangeNotifier {
     String? mobileNumber,
     String? operatorPin,
     Map<String, dynamic>? cardDetails,
+    String? couponCode,
   }) async {
     _setProcessing(true);
     _setError(null);
@@ -57,10 +60,13 @@ class PaymentProvider extends ChangeNotifier {
         mobileNumber: mobileNumber,
         operatorPin: operatorPin,
         cardDetails: cardDetails,
+        couponCode: couponCode,
       );
 
       if (transaction != null) {
         _currentTransaction = transaction;
+        // Capture receipt data from the service (if any)
+        _receiptData = _paymentService.lastReceiptData;
         _setProcessing(false);
         return true;
       } else {
@@ -79,6 +85,7 @@ class PaymentProvider extends ChangeNotifier {
     _selectedPaymentMethod = null;
     _currentTransaction = null;
     _errorMessage = null;
+    _receiptData = null;
     notifyListeners();
   }
 }

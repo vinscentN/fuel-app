@@ -7,6 +7,7 @@ import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/success_screen.dart';
+import '../screens/common/operator_code_screen.dart';
 
 class CouponRedemptionScreen extends StatefulWidget {
   const CouponRedemptionScreen({super.key});
@@ -129,6 +130,17 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
 
   Future<void> _redeemCoupon() async {
     if (_validatedCoupon == null) return;
+
+    // Ask for operator code before finalizing redemption
+    final opCode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const OperatorCodeScreen(
+          title: 'Operator Code',
+          subtitle: 'Enter your operator code to confirm coupon redemption',
+        ),
+      ),
+    );
+    if (opCode == null || opCode.isEmpty) return;
 
     setState(() {
       _isValidating = true;

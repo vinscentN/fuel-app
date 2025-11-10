@@ -5,24 +5,36 @@ import 'package:google_fonts/google_fonts.dart';
 import 'providers/auth_provider.dart';
 import 'providers/fuel_provider.dart';
 import 'providers/payment_provider.dart';
+import 'providers/pos_provider.dart';
 import 'routes/app_routes.dart';
 import 'utils/colors.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/home/dashboard_screen.dart';
+import 'screens/pos_test_screen.dart';
+import 'screens/home/landing_menu_screen.dart';
+import 'screens/splash/splash_screen.dart';
 
-void main() {
-  runApp(const FuelStationApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final authProvider = AuthProvider();
+
+  runApp(FuelStationApp(authProvider: authProvider));
 }
 
 class FuelStationApp extends StatelessWidget {
-  const FuelStationApp({super.key});
+  final AuthProvider authProvider;
+
+  const FuelStationApp({super.key, required this.authProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => FuelProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
+        ChangeNotifierProvider(create: (_) => PosProvider()),
       ],
       child: MaterialApp(
         title: 'Fuel Mate',
@@ -31,6 +43,11 @@ class FuelStationApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           primaryColor: AppColors.primary,
           scaffoldBackgroundColor: AppColors.background,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 1,
+          ),
           textTheme: GoogleFonts.poppinsTextTheme(),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
@@ -71,8 +88,9 @@ class FuelStationApp extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        home: const LoginScreen(),
-              ),
+        // Splash screen is the entry point
+        home: const SplashScreen(),
+      ),
     );
   }
 }

@@ -28,9 +28,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
 
-  // Navy blue color scheme
-  static const Color navyBlue = Color(0xFF1E3A8A);
-  static const Color lightNavyBlue = Color(0xFF3B82F6);
+  // Use app navy color via AppColors.primary
 
   String _selectedProvider = 'EcoCash';
   final List<Map<String, dynamic>> _providers = [
@@ -140,7 +138,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
         title: 'Mobile Money',
-        backgroundColor: navyBlue,
+        backgroundColor: AppColors.primary,
       ),
       body: Consumer<PaymentProvider>(
         builder: (context, paymentProvider, child) {
@@ -170,20 +168,23 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
                     ),
                   ),
                 ),
-                // Fixed buttons at bottom
-                Container(
-                  padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 24.0),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
+                // Fixed buttons at bottom (safe from system insets)
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 20.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
+                    ),
+                    child: _buildActionButtons(paymentProvider),
                   ),
-                  child: _buildActionButtons(paymentProvider),
                 ),
               ],
             ),
@@ -201,17 +202,17 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
         return Container(
           margin: const EdgeInsets.all(16.0),
           padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: navyBlue,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: navyBlue.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -412,19 +413,19 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: lightNavyBlue.withOpacity(0.1),
+                color: AppColors.primaryLight.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: lightNavyBlue.withOpacity(0.3)),
+                border: Border.all(color: AppColors.primaryLight.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: lightNavyBlue, size: 16),
+                  Icon(Icons.info_outline, color: AppColors.primaryLight, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Enter the mobile number registered with $_selectedProvider',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: lightNavyBlue,
+                        color: AppColors.primaryLight,
                       ),
                     ),
                   ),
@@ -442,7 +443,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
       children: [
         CustomButton(
           onPressed: paymentProvider.isProcessing ? null : _processPayment,
-          backgroundColor: navyBlue,
+          backgroundColor: AppColors.primary,
           child: paymentProvider.isProcessing
               ? const LoadingWidget(size: 24, color: Colors.white)
               : const Text(

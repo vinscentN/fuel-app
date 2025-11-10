@@ -3,14 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/fuel_provider.dart';
+import '../../models/currency.dart';
+import '../../models/product.dart';
 import '../../utils/colors.dart';
 import '../../widgets/common/app_bar_widget.dart';
-import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../payment/payment_method_screen.dart';
 
 class AmountInputScreen extends StatefulWidget {
-  const AmountInputScreen({super.key});
+  final Product product;
+
+  const AmountInputScreen({super.key, required this.product});
 
   @override
   State<AmountInputScreen> createState() => _AmountInputScreenState();
@@ -24,20 +27,22 @@ class _AmountInputScreenState extends State<AmountInputScreen>
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
 
-  bool _isAmountInput = true; // true for amount, false for quantity
-
-  // Navy blue color scheme
-  static const Color navyBlue = Color(0xFF1E3A8A);
-  static const Color lightNavyBlue = Color(0xFF3B82F6);
+  bool _isAmountInput = true;
+  // Use app navy via AppColors.primary
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
+      fuelProvider.selectProduct(widget.product);
+      // Ensure currency is set for downstream payment screens
+      fuelProvider.selectCurrency(_currencyFromCode(widget.product.currencyCode));
+    });
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-
     _slideAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -45,7 +50,6 @@ class _AmountInputScreenState extends State<AmountInputScreen>
       parent: _animationController,
       curve: Curves.easeOut,
     ));
-
     _animationController.forward();
   }
 
@@ -54,46 +58,20 @@ class _AmountInputScreenState extends State<AmountInputScreen>
     _animationController.dispose();
     _amountController.dispose();
     _quantityController.dispose();
+    // ❌ REMOVED: Do not reset the provider here.
+    // The state should persist for the next screens in the flow.
     super.dispose();
-  }
-
-  void _onAmountChanged(String value) {
-    if (value.isEmpty) return;
-
-    final amount = double.tryParse(value) ?? 0.0;
-    final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    fuelProvider.setAmount(amount);
-
-    if (fuelProvider.selectedQuantity > 0) {
-      _quantityController.text = fuelProvider.selectedQuantity.toStringAsFixed(2);
-    }
-  }
-
-  void _onQuantityChanged(String value) {
-    if (value.isEmpty) return;
-
-    final quantity = double.tryParse(value) ?? 0.0;
-    final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    fuelProvider.setQuantity(quantity);
-
-    if (fuelProvider.selectedAmount > 0) {
-      _amountController.text = fuelProvider.selectedAmount.toStringAsFixed(2);
-    }
   }
 
   void _proceedToPayment() {
     if (!_formKey.currentState!.validate()) return;
-
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
     if (fuelProvider.selectedAmount <= 0) {
       _showErrorMessage('Please enter a valid amount');
       return;
     }
-
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const PaymentMethodScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const PaymentMethodScreen()),
     );
   }
 
@@ -109,111 +87,120 @@ class _AmountInputScreenState extends State<AmountInputScreen>
     );
   }
 
+  Currency _currencyFromCode(String code) {
+    final upper = code.toUpperCase();
+    switch (upper) {
+      case 'USD':
+        return Currency(code: 'USD', name: 'US Dollar', symbol: '\$', exchangeRate: 1.0);
+      case 'ZWL':
+        return Currency(code: 'ZWL', name: 'Zimbabwe Dollar', symbol: 'ZWL\$', exchangeRate: 1.0);
+      case 'ZAR':
+        return Currency(code: 'ZAR', name: 'South African Rand', symbol: 'R', exchangeRate: 1.0);
+      default:
+        return Currency(code: upper, name: upper, symbol: upper, exchangeRate: 1.0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
+      resizeToAvoidBottomInset: true,
+      appBar: const CustomAppBar(
         title: 'Enter Amount',
-        backgroundColor: navyBlue,
+        backgroundColor: AppColors.primary,
       ),
-      body: Consumer<FuelProvider>(
-        builder: (context, fuelProvider, child) {
-          final product = fuelProvider.selectedProduct;
-          final currency = fuelProvider.selectedCurrency;
-
-          if (product == null || currency == null) {
-            return const Center(child: Text('Error: Missing data'));
-          }
-
-          final price = product.prices[currency.code] ?? 0.0;
-
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.3),
-              end: Offset.zero,
-            ).animate(_slideAnimation),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildCompactSummary(product, currency, price),
-                    const SizedBox(height: 16),
-                    _buildCompactToggle(),
-                    const SizedBox(height: 16),
-                    _buildCompactInput(fuelProvider, currency, price),
-                    const SizedBox(height: 20),
-                    _buildCompactButtons(fuelProvider),
-                  ],
-                ),
+      body: SafeArea(
+        bottom: true,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.3),
+            end: Offset.zero,
+          ).animate(_slideAnimation),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              16.0,
+              16.0,
+              16.0,
+              16.0 + MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 8.0,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildCompactSummary(widget.product, widget.product.price, widget.product.currencyCode),
+                  const SizedBox(height: 16),
+                  _buildCompactToggle(),
+                  const SizedBox(height: 16),
+                  _buildCompactInput(Provider.of<FuelProvider>(context, listen: false), widget.product.price, widget.product.currencyCode),
+                  const SizedBox(height: 20),
+                  _buildCompactButtons(Provider.of<FuelProvider>(context, listen: false)),
+                ],
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildCompactSummary(product, currency, double price) {
+  Widget _buildCompactSummary(Product product, double price, String currency) {
+    final unitShort = _unitShort(product.unitOfMeasure);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: navyBlue,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: navyBlue.withOpacity(0.3),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+            offset: const Offset(0, 4),
+          )
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Accent bar
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 4,
+            height: 50,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.local_gas_station,
-              color: Colors.white,
-              size: 18,
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 12),
+          // Product + station
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '${currency.symbol}${price.toStringAsFixed(2)}/L',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+            child: Text(
+              product.productName,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(
-            currency.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+          const SizedBox(width: 12),
+          // Price chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${_codeWithSymbol(currency)}${price.toStringAsFixed(2)}/$unitShort',
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -222,6 +209,7 @@ class _AmountInputScreenState extends State<AmountInputScreen>
   }
 
   Widget _buildCompactToggle() {
+    final unitPlural = _unitPlural(widget.product.unitOfMeasure);
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[100],
@@ -236,23 +224,26 @@ class _AmountInputScreenState extends State<AmountInputScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _isAmountInput ? navyBlue : Colors.transparent,
+                  color: _isAmountInput ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.attach_money,
-                      color: _isAmountInput ? Colors.white : Colors.grey[600],
-                      size: 18,
-                    ),
+                    Icon(Icons.attach_money,
+                        color:
+                        _isAmountInput ? Colors.white : Colors.grey[600],
+                        size: 18),
                     const SizedBox(width: 6),
                     Text(
                       'Amount',
                       style: TextStyle(
-                        color: _isAmountInput ? Colors.white : Colors.grey[600],
-                        fontWeight: _isAmountInput ? FontWeight.w600 : FontWeight.normal,
+                        color: _isAmountInput
+                            ? Colors.white
+                            : Colors.grey[600],
+                        fontWeight: _isAmountInput
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
@@ -267,23 +258,26 @@ class _AmountInputScreenState extends State<AmountInputScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: !_isAmountInput ? navyBlue : Colors.transparent,
+                  color: !_isAmountInput ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.local_gas_station,
-                      color: !_isAmountInput ? Colors.white : Colors.grey[600],
-                      size: 18,
-                    ),
+                    Icon(Icons.local_gas_station,
+                        color:
+                        !_isAmountInput ? Colors.white : Colors.grey[600],
+                        size: 18),
                     const SizedBox(width: 6),
                     Text(
-                      'Liters',
+                      unitPlural,
                       style: TextStyle(
-                        color: !_isAmountInput ? Colors.white : Colors.grey[600],
-                        fontWeight: !_isAmountInput ? FontWeight.w600 : FontWeight.normal,
+                        color: !_isAmountInput
+                            ? Colors.white
+                            : Colors.grey[600],
+                        fontWeight: !_isAmountInput
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
@@ -297,7 +291,9 @@ class _AmountInputScreenState extends State<AmountInputScreen>
     );
   }
 
-  Widget _buildCompactInput(FuelProvider fuelProvider, currency, double price) {
+  Widget _buildCompactInput(
+      FuelProvider fuelProvider, double price, String currency) {
+    final unitPlural = _unitPlural(widget.product.unitOfMeasure);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -327,24 +323,29 @@ class _AmountInputScreenState extends State<AmountInputScreen>
           if (_isAmountInput) ...[
             CustomTextField(
               controller: _amountController,
-              label: 'Amount (${currency.symbol})',
+              label: 'Amount ($currency)',
               hint: 'Enter amount',
               prefixIcon: Icons.attach_money,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
-              onChanged: _onAmountChanged,
+              onChanged: (value) {
+                final amount = double.tryParse(value) ?? 0.0;
+                fuelProvider.setAmount(amount);
+                if (price > 0) {
+                  _quantityController.text =
+                      (amount / price).toStringAsFixed(2);
+                }
+              },
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter an amount';
                 }
                 final amount = double.tryParse(value);
                 if (amount == null || amount <= 0) {
-                  return 'Please enter a valid amount';
-                }
-                if (amount > 10000) {
-                  return 'Amount cannot exceed ${currency.symbol}10,000';
+                  return 'Enter valid amount';
                 }
                 return null;
               },
@@ -352,84 +353,112 @@ class _AmountInputScreenState extends State<AmountInputScreen>
           ] else ...[
             CustomTextField(
               controller: _quantityController,
-              label: 'Quantity (Liters)',
-              hint: 'Enter liters',
+              label: 'Quantity ($unitPlural)',
+              hint: 'Enter $unitPlural',
               prefixIcon: Icons.local_gas_station,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
-              onChanged: _onQuantityChanged,
+              onChanged: (value) {
+                final qty = double.tryParse(value) ?? 0.0;
+                fuelProvider.setQuantity(qty);
+                _amountController.text = (qty * price).toStringAsFixed(2);
+              },
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter quantity';
                 }
-                final quantity = double.tryParse(value);
-                if (quantity == null || quantity <= 0) {
-                  return 'Please enter a valid quantity';
-                }
-                if (quantity > 1000) {
-                  return 'Quantity cannot exceed 1000 liters';
+                final qty = double.tryParse(value);
+                if (qty == null || qty <= 0) {
+                  return 'Enter valid quantity';
                 }
                 return null;
               },
             ),
           ],
 
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: lightNavyBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: lightNavyBlue, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _isAmountInput
-                        ? 'Quantity calculated automatically'
-                        : 'Amount calculated automatically',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: lightNavyBlue,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Info helper removed per request
         ],
       ),
     );
   }
 
-  Widget _buildCompactButtons(FuelProvider fuelProvider) {
-    final canProceed = fuelProvider.selectedAmount > 0;
+  String _unitShort(String? uom) {
+    final code = (uom ?? 'L').trim().toUpperCase();
+    switch (code) {
+      case 'L':
+      case 'LT':
+      case 'LTR':
+      case 'LITRE':
+      case 'LITER':
+        return 'L';
+      case 'KG':
+      case 'KGS':
+      case 'KILOGRAM':
+      case 'KILOGRAMS':
+        return 'KG';
+      default:
+        return code;
+    }
+  }
 
+  String _codeWithSymbol(String code) {
+    final c = code.toUpperCase();
+    switch (c) {
+      case 'USD':
+        return 'USD\$';
+      case 'ZWL':
+      case 'ZWG':
+        return '${c}\$';
+      case 'ZAR':
+        return 'ZARR';
+      default:
+        return c;
+    }
+  }
+
+  String _unitPlural(String? uom) {
+    final code = (uom ?? 'L').trim().toUpperCase();
+    switch (code) {
+      case 'L':
+      case 'LT':
+      case 'LTR':
+      case 'LITRE':
+      case 'LITER':
+        return 'Litres';
+      case 'KG':
+      case 'KGS':
+      case 'KILOGRAM':
+      case 'KILOGRAMS':
+        return 'Kgs';
+      default:
+        return code;
+    }
+  }
+
+  Widget _buildCompactButtons(FuelProvider fuelProvider) {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: 52,
           child: ElevatedButton(
-            onPressed: canProceed ? _proceedToPayment : null,
+            onPressed: _proceedToPayment,
             style: ElevatedButton.styleFrom(
-              backgroundColor: navyBlue,
-              disabledBackgroundColor: Colors.grey[300],
-              elevation: canProceed ? 4 : 0,
+              backgroundColor: AppColors.primary,
+              elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
             child: Text(
               'Proceed to Payment',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: canProceed ? Colors.white : Colors.grey[600],
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
             ),
           ),

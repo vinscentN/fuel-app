@@ -1,6 +1,6 @@
 {
-    "name": "fuels_app",
-    "short_name": "fuels_app",
+    "name": "fuelmate",
+    "short_name": "fuelmate",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,9 +1,14 @@
 
 // screens/common/success_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../utils/colors.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../screens/home/dashboard_screen.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/fuel_provider.dart';
+import '../../providers/pos_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class SuccessScreen extends StatefulWidget {
   final String title;
@@ -75,7 +80,15 @@ class _SuccessScreenState extends State<SuccessScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          (route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
         decoration: const BoxDecoration(
@@ -146,6 +159,81 @@ class _SuccessScreenState extends State<SuccessScreen>
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      CustomButton(
+                        onPressed: () async {
+                          final pos = Provider.of<PosProvider>(context, listen: false);
+                          final fuel = Provider.of<FuelProvider>(context, listen: false);
+                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                          final payment = Provider.of<PaymentProvider>(context, listen: false);
+
+                          final r = payment.receiptData;
+                          if (r != null && r.isNotEmpty) {
+                            final unit = _unitShort(fuel.selectedProduct?.unitOfMeasure);
+                            await pos.printReceiptCopy(
+                              copyType: 'MERCHANT COPY',
+                              stationName: (r['stationName'] ?? auth.currentUser?.serviceStationName ?? 'Fuel Station').toString(),
+                              address: (r['address'] ?? '').toString(),
+                              phone: (r['phone'] ?? '').toString(),
+                              date: (r['date'] ?? '').toString(),
+                              time: (r['time'] ?? '').toString(),
+                              pumpNo: (r['pumpNo'] ?? '1').toString(),
+                              product: (r['product'] ?? fuel.selectedProduct?.productName ?? 'Fuel').toString(),
+                              unit: unit,
+                              litres: (r['litres'] ?? fuel.selectedQuantity.toStringAsFixed(2)).toString(),
+                              pricePerLitre: (r['pricePerLitre'] ?? fuel.selectedProduct?.price.toStringAsFixed(2) ?? '0.00').toString(),
+                              total: (r['total'] ?? fuel.selectedAmount.toStringAsFixed(2)).toString(),
+                              payment: (r['payment'] ?? payment.selectedPaymentMethod?.name ?? '').toString(),
+                              cardNo: (r['cardNo'] ?? '').toString(),
+                              authNo: (r['authNo'] ?? payment.currentTransaction?.referenceNumber ?? '').toString(),
+                              rrn: (r['rrn'] ?? payment.currentTransaction?.id ?? '').toString(),
+                              operatorName: (r['attendant'] ?? auth.currentUser?.fullName ?? '').toString(),
+                            );
+                          } else {
+                            final product = fuel.selectedProduct;
+                            final currency = fuel.selectedCurrency;
+                            final txn = payment.currentTransaction;
+                            final stationName = product?.serviceStationName
+                                ?? auth.currentUser?.serviceStationName
+                                ?? 'Fuel Station';
+
+                            final now = DateTime.now();
+                            String two(int n) => n.toString().padLeft(2, '0');
+                            final date = '${now.year}-${two(now.month)}-${two(now.day)}';
+                            final time = '${two(now.hour)}:${two(now.minute)}:${two(now.second)}';
+
+                            final unit = _unitShort(product?.unitOfMeasure);
+                            await pos.printReceiptCopy(
+                              copyType: 'MERCHANT COPY',
+                              stationName: stationName,
+                              address: '',
+                              phone: '',
+                              date: date,
+                              time: time,
+                              pumpNo: '1',
+                              product: product?.productName ?? 'Fuel',
+                              unit: unit,
+                              litres: fuel.selectedQuantity.toStringAsFixed(2),
+                              pricePerLitre: product?.price.toStringAsFixed(2) ?? '0.00',
+                              total: currency != null ? '${currency.symbol}${fuel.selectedAmount.toStringAsFixed(2)}' : fuel.selectedAmount.toStringAsFixed(2),
+                              payment: payment.selectedPaymentMethod?.name ?? '',
+                              cardNo: '',
+                              authNo: txn?.referenceNumber ?? txn?.id ?? '',
+                              rrn: txn?.id ?? txn?.referenceNumber ?? '',
+                              operatorName: auth.currentUser?.fullName ?? '',
+                            );
+                          }
+                        },
+                        isOutlined: true,
+                        backgroundColor: AppColors.textSecondary,
+                        child: const Text(
+                          'Print Merchant Copy',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -154,6 +242,26 @@ class _SuccessScreenState extends State<SuccessScreen>
           ),
         ),
       ),
+    ),
     );
+  }
+
+  String _unitShort(String? uom) {
+    final code = (uom ?? 'L').trim().toUpperCase();
+    switch (code) {
+      case 'L':
+      case 'LT':
+      case 'LTR':
+      case 'LITRE':
+      case 'LITER':
+        return 'L';
+      case 'KG':
+      case 'KGS':
+      case 'KILOGRAM':
+      case 'KILOGRAMS':
+        return 'KG';
+      default:
+        return code;
+    }
   }
 }

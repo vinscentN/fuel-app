@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary brand colors
-  static const Color primary = Color(0xFF1E88E5);  // Fuel station blue
-  static const Color primaryDark = Color(0xFF1565C0);
-  static const Color primaryLight = Color(0xFF64B5F6);
+  // Primary brand colors (Navy scheme)
+  static const Color primary = Color(0xFF1E3A8A);  // Navy blue
+  static const Color primaryDark = Color(0xFF162E6B);
+  static const Color primaryLight = Color(0xFF3B82F6);
 
   // Secondary colors
   static const Color secondary = Color(0xFFFF9800);  // Orange for accents

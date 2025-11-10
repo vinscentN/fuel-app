@@ -18,7 +18,11 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
-
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
+        }
+    }
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.fuels_app"
@@ -37,8 +41,28 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Restrict to 32-bit ABI if 64-bit native libs are not available.
+    // Provide arm64-v8a libs to remove this and support 64-bit devices fully.
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+    defaultConfig {
+        ndk {
+            abiFilters += listOf("armeabi-v7a")
+        }
+    }
+
+
 }
 
 flutter {
     source = "../.."
+}
+dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
+    implementation(files("libs\\AppSdkAidl.jar"))
+    implementation(files("libs\\vanstoneSdkClient-noemv.jar"))
 }

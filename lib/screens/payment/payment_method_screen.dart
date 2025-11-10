@@ -9,7 +9,7 @@ import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
 import 'card_payment_screen.dart';
 import 'cash_payment_screen.dart';
-import 'mobile_payment_screen.dart';
+// import 'mobile_payment_screen.dart'; // Temporarily disabled
 
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({super.key});
@@ -23,9 +23,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  // Navy blue color scheme
-  static const Color navyBlue = Color(0xFF1E3A8A);
-  static const Color lightNavyBlue = Color(0xFF3B82F6);
+  // Use app navy color
 
   @override
   void initState() {
@@ -65,8 +63,17 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         nextScreen = const CashPaymentScreen();
         break;
       case PaymentMethod.mobile:
-        nextScreen = const MobilePaymentScreen();
-        break;
+        // Mobile money flow disabled for now
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mobile Money temporarily unavailable')),
+        );
+        return;
+      default:
+        // Coupon not selectable from generic payment screen
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unsupported payment method')),
+        );
+        return;
     }
 
     Navigator.of(context).push(
@@ -80,7 +87,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
       backgroundColor: AppColors.background,
       appBar: CustomAppBar(
         title: 'Payment Method',
-        backgroundColor: navyBlue,
+        backgroundColor: AppColors.primary,
       ),
       body: Consumer2<FuelProvider, PaymentProvider>(
         builder: (context, fuelProvider, paymentProvider, child) {
@@ -109,21 +116,6 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                     ),
                   ),
                 ),
-                // Fixed back button at bottom
-                Container(
-                  padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 24.0),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
-                  ),
-                  child: _buildBackButton(),
-                ),
               ],
             ),
           );
@@ -133,15 +125,16 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   }
 
   Widget _buildCompactSummary(FuelProvider fuelProvider, currency) {
+    final unit = _unitShort(fuelProvider.selectedProduct?.unitOfMeasure);
     return Container(
       margin: const EdgeInsets.all(16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: navyBlue,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: navyBlue.withOpacity(0.3),
+            color: AppColors.primary.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -181,7 +174,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                 ),
               ),
               Text(
-                '${fuelProvider.selectedQuantity.toStringAsFixed(2)} L',
+                '${fuelProvider.selectedQuantity.toStringAsFixed(2)} $unit',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -206,6 +199,25 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
     );
   }
 
+  String _unitShort(String? uom) {
+    final code = (uom ?? 'L').trim().toUpperCase();
+    switch (code) {
+      case 'L':
+      case 'LT':
+      case 'LTR':
+      case 'LITRE':
+      case 'LITER':
+        return 'L';
+      case 'KG':
+      case 'KGS':
+      case 'KILOGRAM':
+      case 'KILOGRAMS':
+        return 'KG';
+      default:
+        return code;
+    }
+  }
+
   Widget _buildPaymentMethodsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,7 +234,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
           icon: Icons.credit_card,
           title: 'Card Payment',
           subtitle: 'Pay with debit or credit card',
-          color: navyBlue,
+          color: AppColors.primary,
           method: PaymentMethod.card,
           delay: 0,
         ),
@@ -230,20 +242,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         _buildPaymentMethodCard(
           icon: Icons.money,
           title: 'Cash Payment',
-          subtitle: 'Pay with cash and validate with PIN',
-          color: lightNavyBlue,
+          subtitle: 'Pay with cash',
+          color: AppColors.primaryLight,
           method: PaymentMethod.cash,
           delay: 100,
         ),
         const SizedBox(height: 16),
-        _buildPaymentMethodCard(
-          icon: Icons.phone_android,
-          title: 'Mobile Money',
-          subtitle: 'Pay with mobile money transfer',
-          color: const Color(0xFF059669), // Green for mobile money
-          method: PaymentMethod.mobile,
-          delay: 200,
-        ),
         const SizedBox(height: 20), // Extra space for visual separation
       ],
     );

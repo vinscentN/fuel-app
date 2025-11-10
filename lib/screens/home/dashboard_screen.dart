@@ -1,15 +1,18 @@
-// screens/home/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/fuel_provider.dart';
 import '../../utils/colors.dart';
-import '../../widgets/fuel/fuel_product_card.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../fuel/amount_input_screen.dart';
-import '../fuel/product_selection_screen.dart';
 import '../coupon/coupon_redemption_screen.dart';
 import '../auth/login_screen.dart';
+import '../auth/login_settings_screen.dart';
+import 'landing_menu_screen.dart';
+import '../../models/product.dart';
+import 'card_number_screen.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/fuel_provider.dart'; // âœ… Import FuelProvider
+import '../reports/last_sale_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,10 +31,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     _setupAnimations();
-    // Use addPostFrameCallback to ensure the widget tree is built before loading data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadInitialData();
-    });
   }
 
   @override
@@ -46,59 +45,42 @@ class _DashboardScreenState extends State<DashboardScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+      ),
+    );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+      ),
+    );
 
     _animationController.forward();
   }
 
-  Future<void> _loadInitialData() async {
-    if (!mounted) return; // Check if widget is still mounted
-
-    final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    try {
-      await Future.wait([
-        fuelProvider.loadProducts(),
-        fuelProvider.loadCurrencies(),
-      ]);
-    } catch (e) {
-      // Handle any errors that might occur during data loading
-      debugPrint('Error loading initial data: $e');
-    }
+  Future<void> _handleRefresh(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.loadSession(); // re-fetch products + user
   }
 
-  Future<void> _handleRefresh() async {
-    await _loadInitialData();
-  }
-
-  void _navigateToProductSelection(product) {
-    final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    fuelProvider.selectProduct(product);
+  // âœ… UPDATED METHOD TO PASS THE PRODUCT DIRECTLY
+  void _navigateToProductSelection(Product product) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AmountInputScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => AmountInputScreen(product: product)),
     );
   }
 
+
   void _navigateToCouponRedemption() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const CouponRedemptionScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CouponRedemptionScreen()),
     );
   }
 
@@ -122,27 +104,25 @@ class _DashboardScreenState extends State<DashboardScreen>
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.logout_rounded,
-                color: Color(0xFF1A237E),
-                size: 20,
-              ),
+              child: const Icon(Icons.logout_rounded,
+                  color: AppColors.primary, size: 20),
             ),
             const SizedBox(width: 12),
             const Text(
               'Logout',
               style: TextStyle(
-                color: Color(0xFF1A237E),
+                color: AppColors.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -151,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         content: const Text(
           'Are you sure you want to logout?',
           style: TextStyle(
-            color: Color(0xFF1A237E),
+            color: AppColors.primary,
             fontSize: 16,
           ),
         ),
@@ -159,14 +139,14 @@ class _DashboardScreenState extends State<DashboardScreen>
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1A237E).withOpacity(0.7),
+              foregroundColor: AppColors.primary.withOpacity(0.7),
             ),
             child: const Text('Cancel'),
           ),
           Container(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                colors: [AppColors.primary, AppColors.primaryLight],
               ),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -179,21 +159,20 @@ class _DashboardScreenState extends State<DashboardScreen>
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text('Logout',
+                  style: TextStyle(color: Colors.white)),
             ),
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           SlideTransition(
@@ -223,23 +202,60 @@ class _DashboardScreenState extends State<DashboardScreen>
             bottom: 24,
           ),
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1A237E),
-                Color(0xFF3949AB),
-                Color(0xFF5C6BC0),
-              ],
-            ),
+            color: AppColors.primary,
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(28),
             ),
           ),
-          child: Column(
+          child: Row(
             children: [
-              _buildHeaderTop(user),
-              const SizedBox(height: 20),
+              // Logo at the left with white border
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  color: Colors.transparent,
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: Image.asset('images/logo.png', fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (authProvider.serviceStationName ?? user?.serviceStationName ?? '').isNotEmpty
+                          ? (authProvider.serviceStationName ?? user?.serviceStationName ?? '')
+                          : 'Station',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    // Attendant name removed per request
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                onPressed: _openSettings,
+              ),
+              IconButton(
+                icon: const Icon(Icons.home_rounded, color: Colors.white),
+                tooltip: 'Main Menu',
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LandingMenuScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -247,78 +263,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildHeaderTop(user) {
-    return Row(
-      children: [
-        // User Avatar
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(0.3),
-                Colors.white.withOpacity(0.1),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 1.5,
-            ),
-          ),
-          child: const Icon(
-            Icons.person_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
-        ),
-
-        const SizedBox(width: 16),
-
-        // User Greeting
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _getGreeting(),
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                user?.fullName ?? 'Attendant',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Action Buttons
-        Row(
-          children: [
-            _buildHeaderAction(
-              icon: Icons.card_giftcard_rounded,
-              tooltip: 'Redeem Coupon',
-              onTap: _navigateToCouponRedemption,
-            ),
-            const SizedBox(width: 8),
-            _buildHeaderAction(
-              icon: Icons.logout_rounded,
-              tooltip: 'Logout',
-              onTap: _handleLogout,
-            ),
-          ],
-        ),
-      ],
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const LoginSettingsScreen()),
     );
   }
 
@@ -329,376 +276,245 @@ class _DashboardScreenState extends State<DashboardScreen>
     return 'Good evening,';
   }
 
-  Widget _buildHeaderAction({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, color: Colors.white, size: 20),
-        tooltip: tooltip,
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
-        ),
-      ),
-    );
-  }
-
   Widget _buildBody() {
-    return Consumer<FuelProvider>(
-      builder: (context, fuelProvider, child) {
-        if (fuelProvider.isLoading) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (authProvider.isLoading) {
           return const Center(
             child: LoadingWidget(message: 'Loading fuel products...'),
           );
         }
 
-        if (fuelProvider.products.isEmpty) {
+        if (authProvider.products.isEmpty) {
           return _buildEmptyState();
         }
 
         return RefreshIndicator(
-          onRefresh: _handleRefresh,
-          color: const Color(0xFF1A237E),
-          child: Column(
+          onRefresh: () => _handleRefresh(context),
+          color: AppColors.primary,
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            itemCount: authProvider.products.length,
+            itemBuilder: (context, index) {
+              final product = authProvider.products[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                child: _buildModernProductCard(product),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModernProductCard(Product product) {
+    final primary = AppColors.primary;
+    final unit = _unitShort(product.unitOfMeasure);
+    return InkWell(
+      onTap: () => _navigateToProductSelection(product),
+      borderRadius: BorderRadius.circular(12),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _buildSectionHeader(fuelProvider.currencies.length),
+              Container(
+                width: 4,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.local_gas_station_rounded, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: _buildProductsList(
-                  fuelProvider.products,
-                  fuelProvider.currencies,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.productName,
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Station name removed per request
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_codeWithSymbol(product.currencyCode)}${product.price.toStringAsFixed(2)}/$unit',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSectionHeader(int currencyCount) {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 28,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-              ),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Fuel Products',
-                  style: TextStyle(
-                    color: Color(0xFF1A237E),
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Select a product to start transaction',
-                  style: TextStyle(
-                    color: const Color(0xFF1A237E).withOpacity(0.6),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildProductsList(List products, List currencies) {
-    final defaultCurrency = currencies.isNotEmpty ? currencies.first.code : 'USD';
+  String _unitShort(String? uom) {
+    final code = (uom ?? 'L').trim().toUpperCase();
+    switch (code) {
+      case 'L':
+      case 'LT':
+      case 'LTR':
+      case 'LITRE':
+      case 'LITER':
+        return 'L';
+      case 'KG':
+      case 'KGS':
+      case 'KILOGRAM':
+      case 'KILOGRAMS':
+        return 'KG';
+      default:
+        return code;
+    }
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: products.length + 1, // +1 for the coupon card
-      itemBuilder: (context, index) {
-        // Show coupon card after all products
-        if (index == products.length) {
-          return TweenAnimationBuilder<double>(
-            duration: Duration(milliseconds: 600 + (index * 150)),
-            tween: Tween(begin: 0.0, end: 1.0),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, child) {
-              return Transform.translate(
-                offset: Offset(40 * (1 - value), 0),
-                child: Opacity(
-                  opacity: value,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: _buildCouponCard(),
-                  ),
-                ),
-              );
-            },
+  String _codeWithSymbol(String code) {
+    final c = code.toUpperCase();
+    switch (c) {
+      case 'USD':
+        return 'USD\$';
+      case 'ZWL':
+      case 'ZWG':
+        return '${c}\$';
+      case 'ZAR':
+        return 'ZARR';
+      default:
+        return c;
+    }
+  }
+
+  Widget _buildFooterActions() {
+    final primary = AppColors.primary;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 700;
+
+        final batchBtn = OutlinedButton.icon(
+          onPressed: _handleBatchCutoff,
+          icon: Icon(Icons.cut, color: primary),
+          label: Text('Batch CutOff', style: TextStyle(color: primary)),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: primary.withOpacity(0.25)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            minimumSize: const Size(0, 48),
+          ),
+        );
+
+        final lastTxnBtn = OutlinedButton.icon(
+          onPressed: _openLastTransaction,
+          icon: const Icon(Icons.receipt_long, color: AppColors.textSecondary),
+          label: const Text('Last Sale', style: TextStyle(color: AppColors.textSecondary)),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Color(0xFFE5E7EB)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            minimumSize: const Size(0, 48),
+          ),
+        );
+
+        final redeemBtn = ElevatedButton.icon(
+          onPressed: _navigateToCouponRedemption,
+          icon: const Icon(Icons.card_giftcard_rounded, color: Colors.white),
+          label: const Text('Redeem Coupon', style: TextStyle(color: Colors.white)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            minimumSize: const Size(0, 48),
+          ),
+        );
+
+        if (wide) {
+          return Row(
+            children: [
+              Expanded(child: batchBtn),
+              const SizedBox(width: 12),
+              Expanded(child: lastTxnBtn),
+              const SizedBox(width: 12),
+              Expanded(child: redeemBtn),
+            ],
           );
         }
 
-        // Show product cards
-        final product = products[index];
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 600 + (index * 150)),
-          tween: Tween(begin: 0.0, end: 1.0),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) {
-            return Transform.translate(
-              offset: Offset(40 * (1 - value), 0),
-              child: Opacity(
-                opacity: value,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: _buildModernProductCard(product, defaultCurrency),
-                ),
-              ),
-            );
-          },
+        // Compact layout: two buttons on first row, primary action full-width below
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: batchBtn),
+                const SizedBox(width: 12),
+                Expanded(child: lastTxnBtn),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(width: double.infinity, child: redeemBtn),
+          ],
         );
       },
     );
   }
 
-  Widget _buildCouponCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFF1A237E).withOpacity(0.08),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1A237E).withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: const Color(0xFF1A237E).withOpacity(0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
+  void _handleBatchCutoff() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Batch CutOff'),
+        content: const Text('Are you sure you want to perform batch cutoff?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
         ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _navigateToCouponRedemption,
-          borderRadius: BorderRadius.circular(18),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                // Coupon Icon
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.orange.withOpacity(0.15),
-                        Colors.deepOrange.withOpacity(0.15),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.orange.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.card_giftcard_rounded,
-                    color: Colors.orange,
-                    size: 28,
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // Coupon Details
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Redeem Coupon',
-                        style: TextStyle(
-                          color: Color(0xFF1A237E),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      SizedBox(height: 6),
-                    ],
-                  ),
-                ),
-
-                // Arrow Icon
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.orange.withOpacity(0.8),
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
+    if (confirm == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Batch cutoff requested')),
+      );
+      // TODO: Wire to backend when ready
+    }
   }
 
-  Widget _buildModernProductCard(product, String currency) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFF1A237E).withOpacity(0.08),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1A237E).withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: const Color(0xFF1A237E).withOpacity(0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _navigateToProductSelection(product),
-          borderRadius: BorderRadius.circular(18),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                // Product Icon
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF1A237E).withOpacity(0.1),
-                        const Color(0xFF3949AB).withOpacity(0.1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF1A237E).withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.local_gas_station_rounded,
-                    color: Color(0xFF1A237E),
-                    size: 28,
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // Product Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.name ?? 'Unknown Product',
-                        style: const TextStyle(
-                          color: Color(0xFF1A237E),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        product.description ?? 'Fuel Product',
-                        style: TextStyle(
-                          color: const Color(0xFF1A237E).withOpacity(0.7),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Available',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Arrow Icon
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A237E).withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: const Color(0xFF1A237E).withOpacity(0.7),
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  void _openLastTransaction() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const LastSaleScreen()),
     );
   }
 
@@ -707,70 +523,24 @@ class _DashboardScreenState extends State<DashboardScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A237E).withOpacity(0.08),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Icon(
-              Icons.local_gas_station_outlined,
-              size: 50,
-              color: const Color(0xFF1A237E).withOpacity(0.4),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'No Fuel Products Available',
-            style: TextStyle(
-              color: Color(0xFF1A237E),
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          const Icon(Icons.local_gas_station_outlined,
+              size: 80, color: AppColors.primary),
+          const SizedBox(height: 16),
+          const Text('No Fuel Products Available',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary)),
           const SizedBox(height: 8),
-          Text(
-            'Please contact your administrator',
-            style: TextStyle(
-              color: const Color(0xFF1A237E).withOpacity(0.6),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1A237E).withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: ElevatedButton.icon(
-              onPressed: _handleRefresh,
-              icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-              label: const Text(
-                'Retry',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+          Text('Please contact your administrator',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.primary.withOpacity(0.6))),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () => _handleRefresh(context),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            label: const Text('Retry'),
           ),
         ],
       ),

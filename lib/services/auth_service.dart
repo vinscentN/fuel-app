@@ -1,58 +1,53 @@
 // services/auth_service.dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'api_client.dart';
 import '../models/user.dart';
+import '../constants/api_constants.dart';
 
 class AuthService {
-  // Dummy data for authentication
-  static const List<Map<String, dynamic>> _dummyUsers = [
-    {
-      'id': '1',
-      'username': 'test',
-      'password': '1234',
-      'fullName': 'John Doe',
-      'role': 'attendant',
-      'isActive': true,
-    },
-    {
-      'id': '2',
-      'username': 'manager',
-      'password': 'admin',
-      'fullName': 'Jane Smith',
-      'role': 'manager',
-      'isActive': true,
-    },
-    {
-      'id': '3',
-      'username': 'attendant2',
-      'password': '1234',
-      'fullName': 'Mike Johnson',
-      'role': 'attendant',
-      'isActive': true,
-    },
-  ];
+  Future<Map<String, dynamic>?> login(String username, String password) async {
+    final url = Uri.parse(ApiConstants.login);
 
-  Future<User?> login(String username, String password) async {
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 2));
+    final response = await http.post(
+      url,
+      body: {"username": username, "password": password},
+    );
 
-    try {
-      final userData = _dummyUsers.firstWhere(
-            (user) => user['username'] == username && user['password'] == password,
-      );
+    if (response.statusCode == 200) {
+      final body = json.decode(response.body);
 
-      return User.fromJson(userData);
-    } catch (e) {
-      return null; // User not found
+      if (body["status"] == "success") {
+        final token = body["token"];
+        final user = User.fromJson(body["data"]);
+
+        return {"token": token, "user": user};
+      }
     }
+
+    return null;
   }
 
-  Future<void> logout() async {
-    // Simulate API call delay
-    await Future.delayed(const Duration(milliseconds: 500));
-    // Clear any stored tokens or session data
+  Future<void> logout(String? token) async {
+    final url = Uri.parse(ApiConstants.logout);
+
+    await http.post(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
   }
 
-  // API endpoint placeholders for future implementation
-  static const String loginEndpoint = '/api/auth/login';
-  static const String logoutEndpoint = '/api/auth/logout';
-  static const String refreshTokenEndpoint = '/api/auth/refresh';
+  // Request an attendant/operator code reset via email or phone
+  Future<Map<String, dynamic>> requestAttendantResetCode(String emailOrPhone) async {
+    final api = ApiClient();
+    final response = await api.post(
+      ApiConstants.attendantsResetCode,
+      body: {
+        'email_mobile_number': emailOrPhone.trim(),
+      },
+    );
+    return response;
+  }
 }
