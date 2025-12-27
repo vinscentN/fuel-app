@@ -456,7 +456,7 @@ class _AmountInputScreenState extends State<AmountInputScreen>
             child: Text(
               'Proceed to Payment',
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),

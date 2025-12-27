@@ -3,20 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:provider/provider.dart';
-import 'package:fuels_app/aisino_pos_sdk.dart';
+import 'package:gasman/aisino_pos_sdk.dart';
 import '../../providers/fuel_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/pos_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/colors.dart';
 import '../../models/transaction.dart';
+import '../../models/customer.dart';
 import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/success_screen.dart';
 import '../common/success_screen.dart';
-import '../common/operator_code_screen.dart';
+import '../common/customer_details_screen.dart';
 
 // Card payment states
 enum CardPaymentState {
@@ -45,8 +46,6 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
   late AnimationController _fadeController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _fadeAnimation;
-
-  // Use app navy color via AppColors.primary
 
   CardPaymentState _currentState = CardPaymentState.waitingForCard;
   // Card number display handling
@@ -96,7 +95,6 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
   void dispose() {
     _pulseController.dispose();
     _fadeController.dispose();
-    // no controller to dispose
     super.dispose();
   }
 
@@ -143,6 +141,13 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
         });
 
         HapticFeedback.lightImpact();
+
+        // Beep on successful card detection
+        try {
+          await AisinoPosSdk.beep();
+        } catch (e) {
+          debugPrint('Beep failed: $e');
+        }
 
         // Proceed to PIN after short acknowledgement
         await Future.delayed(const Duration(seconds: 2));
@@ -214,7 +219,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
     HapticFeedback.selectionClick();
   }
 
-  Future<void> _processPayment() async {
+  Future<void> _processPayment() async{
     setState(() {
       _currentState = CardPaymentState.processing;
     });
@@ -244,31 +249,41 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
       'nfc': _rawNfcData,
     };
 
-    // Ask for operator code as last step before submission
-    final operatorCode = await Navigator.of(context).push<String>(
+    // Navigate to customer details screen
+    final customerResult = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
-        builder: (_) => const OperatorCodeScreen(
-          title: 'Operator Code',
-          subtitle: 'Enter your operator code to confirm this card transaction',
+        builder: (_) => const CustomerDetailsScreen(
+          title: 'Customer Details',
+          subtitle: 'Search for existing customer or add new customer details',
         ),
       ),
     );
-    if (operatorCode == null || operatorCode.isEmpty) {
+
+    if (!mounted) return;
+
+    // If user cancelled (closed customer details screen), return to PIN entry
+    if (customerResult == null) {
       setState(() {
         _currentState = CardPaymentState.enteringPin;
       });
       return;
     }
 
+    // Extract customer data from result
+    int? customerId = customerResult['customerId'] as int?;
+    CustomerData? customerData = customerResult['customerData'] as CustomerData?;
+
     final success = await paymentProvider.processPayment(
-      userId: authProvider.currentUser?.id ?? '0',
+      userId: authProvider.currentUser?.id.toString() ?? '0',
       productId: fuelProvider.selectedProduct!.id,
       currencyCode: fuelProvider.selectedCurrency!.code,
       amount: fuelProvider.selectedAmount,
       quantity: fuelProvider.selectedQuantity,
       paymentMethod: PaymentMethod.card,
       cardDetails: cardDetails,
-      operatorPin: operatorCode,
+      operatorPin: authProvider.currentUser?.id.toString() ?? '0',
+      customerId: customerId,
+      customerData: customerData,
     );
 
     if (success && mounted) {

@@ -1,6 +1,7 @@
 // services/payment_service.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transaction.dart';
+import '../models/customer.dart';
 import '../constants/api_constants.dart';
 import 'api_client.dart';
 import 'pos_service.dart';
@@ -21,8 +22,10 @@ class PaymentService {
     String? operatorPin,
     Map<String, dynamic>? cardDetails,
     String? couponCode,
+    int? customerId,
+    CustomerData? customerData,
   }) async {
-    final url = '${ApiConstants.baseUrl}/pos/sale';
+    final url = '${ApiConstants.baseUrl}/sale';
 
     // Resolve serial number (prefer saved session, fallback to device read)
     final prefs = await SharedPreferences.getInstance();
@@ -32,6 +35,7 @@ class PaymentService {
     // Map to API-required fields
     final payload = <String, dynamic>{
       // Required fields
+      'attendant_id': int.tryParse(userId) ?? 0,
       'operator_code': int.tryParse((operatorPin ?? userId).toString()) ?? 0,
       'payment_method': paymentMethod.toString().split('.').last, // e.g. 'card', 'coupon'
       'serial_number': serial ?? '',
@@ -39,6 +43,9 @@ class PaymentService {
       // Currency model doesn't expose id yet; default to 1 for now
       'currency_id': 1,
       'amount': amount,
+      // Customer fields (optional)
+      'customer_id': customerId,
+      'customer': customerData?.toJson(),
       // Card details mapping for card payments
       if (paymentMethod == PaymentMethod.card)
         'card_pan': cardDetails?['cardNumber']?.toString() ?? '',

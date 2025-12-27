@@ -6,6 +6,7 @@ import '../models/product.dart';          // 🔹 product model
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
 import '../services/device_service.dart';
+import '../utils/error_utils.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -37,7 +38,9 @@ class AuthProvider extends ChangeNotifier {
   String? get serviceStationName => _serviceStationName;
   String? get serviceStationAddress => _serviceStationAddress;
   String? get serviceStationPhone => _serviceStationPhone;
-  bool get isDeviceActive => _deviceActive || (_serviceStationId != null && _serviceStationId!.isNotEmpty);
+  bool get isDeviceActive => _deviceActive ||
+      (_serviceStationId != null && _serviceStationId!.isNotEmpty) ||
+      (_currentUser != null && _currentUser!.serviceStationId > 0);
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -49,6 +52,47 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Mobile login with username and operator code
+  Future<bool> mobileLogin(String username, String operatorCode, String serialNumber) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final result = await _authService.mobileLogin(username, operatorCode, serialNumber);
+
+      // Success - extract user and token (result is never null here, exceptions are thrown on failure)
+      _currentUser = result!['user'] as User;
+      _token = result['token'] as String;
+
+      // Save to local storage
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("token", _token!);
+      await prefs.setString("user", _currentUser!.toJsonString());
+
+      // Auto-save device session from user's service station info
+      if (_currentUser!.serviceStationId > 0) {
+        _serviceStationId = _currentUser!.serviceStationId.toString();
+        _serviceStationName = _currentUser!.serviceStationName;
+        _deviceActive = true;
+        await prefs.setString('service_station_id', _serviceStationId!);
+        await prefs.setString('service_station_name', _serviceStationName ?? '');
+        await prefs.setBool('device_active', true);
+      }
+
+      // Fetch products right away
+      await _fetchProducts();
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      // Extract and display backend error message
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Login failed'));
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Legacy POS login (keeping for backward compatibility)
   Future<bool> login(String username, String password) async {
     _setLoading(true);
     _setError(null);
@@ -65,6 +109,16 @@ class AuthProvider extends ChangeNotifier {
         await prefs.setString("token", _token!);
         await prefs.setString("user", _currentUser!.toJsonString());
 
+        // Auto-save device session from user's service station info
+        if (_currentUser!.serviceStationId > 0) {
+          _serviceStationId = _currentUser!.serviceStationId.toString();
+          _serviceStationName = _currentUser!.serviceStationName;
+          _deviceActive = true;
+          await prefs.setString('service_station_id', _serviceStationId!);
+          await prefs.setString('service_station_name', _serviceStationName ?? '');
+          await prefs.setBool('device_active', true);
+        }
+
         // Fetch products right away
         await _fetchProducts();
 
@@ -76,7 +130,7 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _setError('Login failed: ${e.toString()}');
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Login failed'));
       _setLoading(false);
       return false;
     }
@@ -84,31 +138,34 @@ class AuthProvider extends ChangeNotifier {
 
 
   Future<void> _fetchProducts() async {
-    if (_token == null) return;
+    if (_token == null) {
+      print("⚠️ Cannot fetch products: No token available");
+      return;
+    }
 
     try {
+      print("📡 Fetching products with token...");
       final response = await _productService.fetchProducts(_token!);
 
       print("📡 RAW PRODUCTS RESPONSE: $response");
 
       final list = _extractProductList(response);
       if (list.isNotEmpty) {
-        if (list.isNotEmpty) {
-          print("🔎 First product: ${list.first}");
-        }
         _products = list.map((p) => Product.fromJson(p as Map<String, dynamic>)).toList();
         print("✅ Products fetched successfully: ${_products.length}");
+        notifyListeners();
       } else {
         print("⚠️ No products found in response");
         _products = [];
+        notifyListeners();
       }
     } catch (e, stack) {
       print("🚨 Failed to fetch products: $e");
       print("📍 Stacktrace: $stack");
       _products = [];
+      notifyListeners();
+      // Don't silently fail - ensure notifyListeners is called so UI can update
     }
-
-    notifyListeners();
   }
   
   // New: Activate device by serial number
@@ -152,25 +209,10 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
       // Not successful -> surface message
-      final apiMessage = (resp['message'] ?? resp['error'])?.toString();
-      _setError(apiMessage ?? 'Device launch failed');
+      _setError(ErrorUtils.extractErrorMessage(resp, fallback: 'Device launch failed'));
       return false;
     } catch (e) {
-      // Try to extract a friendly API message instead of dumping raw JSON
-      final raw = e.toString();
-      String? friendly;
-      try {
-        final start = raw.indexOf('{');
-        final end = raw.lastIndexOf('}');
-        if (start != -1 && end != -1 && end > start) {
-          final jsonStr = raw.substring(start, end + 1);
-          final Map<String, dynamic> obj = jsonDecode(jsonStr) as Map<String, dynamic>;
-          friendly = (obj['message'] ?? obj['error'] ?? obj['detail'] ?? obj['status'])?.toString();
-        }
-      } catch (_) {
-        // ignore parse errors, we'll fallback below
-      }
-      _setError(friendly ?? 'Device launch failed');
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Device launch failed'));
       return false;
     } finally {
       _setLoading(false);
@@ -179,7 +221,10 @@ class AuthProvider extends ChangeNotifier {
 
   // New: fetch products by service station id without auth token
   Future<void> fetchProductsByStation() async {
-    if (_serviceStationId == null) return;
+    if (_serviceStationId == null) {
+      print('[AuthProvider] Cannot fetch products: No service station ID');
+      return;
+    }
     try {
       _setLoading(true);
       // Logging request intent
@@ -189,10 +234,20 @@ class AuthProvider extends ChangeNotifier {
       // Normalize and extract products from various API shapes
       final list = _extractProductList(response);
       print('[AuthProvider] Normalized products count: ${list.length}');
-      _products = list.map((p) => Product.fromJson(p as Map<String, dynamic>)).toList();
-    } catch (e) {
-      print('[AuthProvider] Fetch products error: $e');
-      _setError('Failed to fetch products: ${e.toString()}');
+      if (list.isNotEmpty) {
+        _products = list.map((p) => Product.fromJson(p as Map<String, dynamic>)).toList();
+        print('[AuthProvider] ✅ Products loaded: ${_products.length}');
+      } else {
+        print('[AuthProvider] ⚠️ No products found in response');
+        _products = [];
+      }
+      notifyListeners();
+    } catch (e, stack) {
+      print('[AuthProvider] 🚨 Fetch products error: $e');
+      print('[AuthProvider] Stack trace: $stack');
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Failed to fetch products'));
+      _products = [];
+      notifyListeners();
     } finally {
       _setLoading(false);
     }
@@ -234,21 +289,18 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Force fetch latest products from the best available source.
-  /// If device is launched for a station, prefer station-specific endpoint.
+  /// Prefer token-based fetch when available for better security.
   Future<void> fetchLatestProducts() async {
-    if (_serviceStationId != null && _serviceStationId!.isNotEmpty) {
-      print('[AuthProvider] fetchLatestProducts: using station endpoint ($_serviceStationId)');
-      await fetchProductsByStation();
-      // If station fetch returned nothing and we have a token, fall back
-      if (_products.isEmpty && _token != null) {
-        print('[AuthProvider] Station fetch empty. Falling back to token endpoint');
-        await _fetchProducts();
-      }
-      return;
-    }
+    // Prioritize token-based fetch when user is logged in
     if (_token != null) {
       print('[AuthProvider] fetchLatestProducts: using token endpoint');
       await _fetchProducts();
+      return;
+    }
+    // Fall back to station-based fetch if no token
+    if (_serviceStationId != null && _serviceStationId!.isNotEmpty) {
+      print('[AuthProvider] fetchLatestProducts: using station endpoint ($_serviceStationId)');
+      await fetchProductsByStation();
       return;
     }
     print('[AuthProvider] fetchLatestProducts: no station or token available');
@@ -271,7 +323,7 @@ class AuthProvider extends ChangeNotifier {
       await prefs.remove('token');
       await prefs.remove('user');
     } catch (e) {
-      _setError('Logout failed: ${e.toString()}');
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Logout failed'));
     } finally {
       _setLoading(false);
     }

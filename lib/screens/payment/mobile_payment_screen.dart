@@ -104,7 +104,7 @@ class _MobilePaymentScreenState extends State<MobilePaymentScreen>
     final mobileNumber = _mobileController.text.replaceAll(RegExp(r'[^\d]'), '');
 
     final success = await paymentProvider.processPayment(
-      userId: authProvider.currentUser!.id,
+      userId: authProvider.currentUser!.id.toString(),
       productId: fuelProvider.selectedProduct!.id,
       currencyCode: fuelProvider.selectedCurrency!.code,
       amount: fuelProvider.selectedAmount,

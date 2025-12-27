@@ -29,7 +29,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import io.flutter.plugin.common.MethodChannel;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+
+import java.util.Hashtable;
 
 import com.vanstone.appsdk.client.ISdkStatue;
 import com.vanstone.trans.api.IcApi;
@@ -149,6 +161,21 @@ public class MainActivity extends FlutterActivity {
                         case "batchAuditReceipt":
                             Map<String, Object> args6 = (Map<String, Object>) call.arguments;
                             handleBatchAuditReceipt(args6, result);
+                            break;
+
+                        case "printQRCodeReceipt":
+                            Map<String, Object> args7 = (Map<String, Object>) call.arguments;
+                            handlePrintQRCodeReceipt(args7, result);
+                            break;
+
+                        case "printPickupReceipt":
+                            Map<String, Object> args8 = (Map<String, Object>) call.arguments;
+                            handlePrintPickupReceipt(args8, result);
+                            break;
+
+                        case "printDeliveryReceipt":
+                            Map<String, Object> args9 = (Map<String, Object>) call.arguments;
+                            handlePrintDeliveryReceipt(args9, result);
                             break;
 
                         case "getSerialNumber":
@@ -601,6 +628,11 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnSetGray_Api(15);
         PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
 
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
+
         PrinterApi.PrnStr_Api(centerText("=== RECEIPT ==="));
         PrinterApi.PrnStr_Api("\n");
         PrinterApi.PrnStr_Api("Station: " + stationName);
@@ -638,6 +670,11 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
         PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
+
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
 
         // Header
         PrinterApi.PrnStr_Api(centerText("=== " + title + " ==="));
@@ -717,6 +754,11 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
         PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
+
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
 
         // Header
         PrinterApi.PrnStr_Api(centerText("=== " + (title == null || title.isEmpty() ? "BATCH CUT OFF" : title) + " ==="));
@@ -869,6 +911,11 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnSetGray_Api(15);
         PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
 
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
+
         // Header with custom title
         if (title == null || title.trim().isEmpty()) title = "LAST SALE TRANSACTION";
         PrinterApi.PrnStr_Api(centerText("=== " + title + " ==="));
@@ -935,6 +982,11 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
         PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
+
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
 
         // Header
         if (title == null || title.isEmpty()) title = "BATCH AUDIT";
@@ -1068,6 +1120,405 @@ public class MainActivity extends FlutterActivity {
             Log.e(TAG, "Error reading serial number", t);
         }
         return null;
+    }
+
+    private void handlePrintQRCodeReceipt(Map<String, Object> args, MethodChannel.Result result) {
+        new Thread(() -> {
+            try {
+                String title = safeStr(args.get("title"));
+                String qrData = safeStr(args.get("qrData"));
+                String requestCode = safeStr(args.get("requestCode"));
+                String stationName = safeStr(args.get("stationName"));
+                String address = safeStr(args.get("address"));
+                String phone = safeStr(args.get("phone"));
+                String date = safeStr(args.get("date"));
+                String time = safeStr(args.get("time"));
+                String status = safeStr(args.get("status"));
+                String description = safeStr(args.get("description"));
+                String cylinderCount = safeStr(args.get("cylinderCount"));
+                String cylinderDetails = safeStr(args.get("cylinderDetails"));
+                String createdBy = safeStr(args.get("createdBy"));
+
+                printQRCodeReceipt(title, qrData, requestCode, stationName, address, phone,
+                                  date, time, status, description, cylinderCount,
+                                  cylinderDetails, createdBy);
+                runOnUiThread(() -> result.success("QR code receipt printed"));
+            } catch (Exception e) {
+                Log.e(TAG, "QR code print error", e);
+                runOnUiThread(() -> result.error("PRINT_EXCEPTION", e.getMessage(), null));
+            }
+        }).start();
+    }
+
+    private void printQRCodeReceipt(String title, String qrData, String requestCode,
+                                   String stationName, String address, String phone,
+                                   String date, String time, String status, String description,
+                                   String cylinderCount, String cylinderDetails, String createdBy) {
+        PrinterApi.PrnClrBuff_Api();
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnSetGray_Api(15);
+        PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
+
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
+
+        // Header
+        PrinterApi.PrnFontSet_Api(28, 28, 0);
+        PrinterApi.PrnStr_Api(centerText("=== " + title + " ==="));
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnStr_Api("\n");
+
+        // Station details
+        if (stationName != null && !stationName.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText(stationName));
+        }
+        if (address != null && !address.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText(address));
+        }
+        if (phone != null && !phone.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText("Tel: " + phone));
+        }
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Date and Time
+        PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Generate and print QR code as image
+        try {
+            Bitmap qrBitmap = generateQrCode(qrData);
+            PrinterApi.PrnStr_Api("\n");
+            PrinterApi.PrnLogo_Api(qrBitmap);
+            PrinterApi.PrnStr_Api("\n");
+        } catch (WriterException e) {
+            Log.e(TAG, "Failed to generate QR code", e);
+            // Fallback to text if QR generation fails
+            PrinterApi.PrnStr_Api("\n");
+            PrinterApi.PrnStr_Api(centerText("QR CODE:"));
+            PrinterApi.PrnStr_Api(centerText(qrData));
+            PrinterApi.PrnStr_Api("\n");
+        }
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Request details
+        PrinterApi.PrnStr_Api("Request Code: " + requestCode);
+        PrinterApi.PrnStr_Api("Status: " + status);
+        PrinterApi.PrnStr_Api("Description: " + description);
+        PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
+        PrinterApi.PrnStr_Api("Created By: " + createdBy);
+        PrinterApi.PrnStr_Api("--------------------------------");
+//
+//        // Cylinder details
+//        if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
+//            PrinterApi.PrnStr_Api("CYLINDER DETAILS:");
+//            String[] lines = cylinderDetails.split("\n");
+//            for (String line : lines) {
+//                if (line != null && !line.trim().isEmpty()) {
+//                    PrinterApi.PrnStr_Api("  " + line.trim());
+//                }
+//            }
+//            PrinterApi.PrnStr_Api("--------------------------------");
+//        }
+
+        // Footer
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText("Scan QR code at depot"));
+        PrinterApi.PrnStr_Api(centerText("to accept cylinders"));
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
+        PrinterApi.PrnStr_Api("\n\n\n");
+        PrinterApi.PrnStart_Api();
+    }
+
+    private void handlePrintPickupReceipt(Map<String, Object> args, MethodChannel.Result result) {
+        new Thread(() -> {
+            try {
+                String requestCode = safeStr(args.get("requestCode"));
+                String stationName = safeStr(args.get("stationName"));
+                String address = safeStr(args.get("address"));
+                String phone = safeStr(args.get("phone"));
+                String date = safeStr(args.get("date"));
+                String time = safeStr(args.get("time"));
+                String driverName = safeStr(args.get("driverName"));
+                String cylinderCount = safeStr(args.get("cylinderCount"));
+                String cylinderDetails = safeStr(args.get("cylinderDetails"));
+                String description = safeStr(args.get("description"));
+                String siteName = safeStr(args.get("siteName"));
+                String siteCode = safeStr(args.get("siteCode"));
+
+                // Print driver copy
+                printPickupReceipt("DRIVER COPY", requestCode, stationName, address, phone,
+                                  date, time, driverName, cylinderCount, cylinderDetails,
+                                  description, siteName, siteCode);
+
+                // Print attendant copy
+                printPickupReceipt("ATTENDANT COPY", requestCode, stationName, address, phone,
+                                  date, time, driverName, cylinderCount, cylinderDetails,
+                                  description, siteName, siteCode);
+
+                runOnUiThread(() -> result.success("Pickup receipts printed"));
+            } catch (Exception e) {
+                Log.e(TAG, "Pickup receipt print error", e);
+                runOnUiThread(() -> result.error("PRINT_EXCEPTION", e.getMessage(), null));
+            }
+        }).start();
+    }
+
+    private void printPickupReceipt(String copyType, String requestCode, String stationName,
+                                   String address, String phone, String date, String time,
+                                   String driverName, String cylinderCount, String cylinderDetails,
+                                   String description, String siteName, String siteCode) {
+        PrinterApi.PrnClrBuff_Api();
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnSetGray_Api(15);
+        PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
+
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
+
+        // Header
+        PrinterApi.PrnFontSet_Api(28, 28, 0);
+        PrinterApi.PrnStr_Api(centerText("PICKUP CONFIRMATION"));
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText(copyType));
+        PrinterApi.PrnStr_Api("\n");
+
+        // Station details
+        if (stationName != null && !stationName.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText(stationName));
+        }
+        if (address != null && !address.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText(address));
+        }
+        if (phone != null && !phone.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText("Tel: " + phone));
+        }
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Date and Time
+        PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Pickup details
+        PrinterApi.PrnStr_Api("Request Code: " + requestCode);
+        PrinterApi.PrnStr_Api("Site: " + siteName);
+        PrinterApi.PrnStr_Api("Site Code: " + siteCode);
+        PrinterApi.PrnStr_Api("Driver: " + driverName);
+        PrinterApi.PrnStr_Api("Description: " + description);
+        PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Cylinder details
+        if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
+            PrinterApi.PrnStr_Api("CYLINDER DETAILS:");
+            PrinterApi.PrnStr_Api("\n");
+            String[] lines = cylinderDetails.split("\n");
+            for (String line : lines) {
+                if (line != null && !line.trim().isEmpty()) {
+                    PrinterApi.PrnStr_Api(line.trim());
+                }
+            }
+            PrinterApi.PrnStr_Api("--------------------------------");
+        }
+
+        // Footer
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText("Cylinders picked up"));
+        PrinterApi.PrnStr_Api(centerText("for refilling"));
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
+        PrinterApi.PrnStr_Api("\n\n\n");
+        PrinterApi.PrnStart_Api();
+    }
+
+    private void handlePrintDeliveryReceipt(Map<String, Object> args, MethodChannel.Result result) {
+        new Thread(() -> {
+            try {
+                String requestCode = safeStr(args.get("requestCode"));
+                String deliveryCode = safeStr(args.get("deliveryCode"));
+                String invoiceNumber = safeStr(args.get("invoiceNumber"));
+                String stationName = safeStr(args.get("stationName"));
+                String address = safeStr(args.get("address"));
+                String phone = safeStr(args.get("phone"));
+                String date = safeStr(args.get("date"));
+                String time = safeStr(args.get("time"));
+                String driverName = safeStr(args.get("driverName"));
+                String cylinderCount = safeStr(args.get("cylinderCount"));
+                String cylinderDetails = safeStr(args.get("cylinderDetails"));
+                String description = safeStr(args.get("description"));
+                String siteName = safeStr(args.get("siteName"));
+                String siteCode = safeStr(args.get("siteCode"));
+
+                // Print driver copy
+                printDeliveryReceipt("DRIVER COPY", requestCode, deliveryCode, invoiceNumber,
+                                    stationName, address, phone, date, time, driverName,
+                                    cylinderCount, cylinderDetails, description, siteName, siteCode);
+
+                // Print attendant copy
+                printDeliveryReceipt("ATTENDANT COPY", requestCode, deliveryCode, invoiceNumber,
+                                    stationName, address, phone, date, time, driverName,
+                                    cylinderCount, cylinderDetails, description, siteName, siteCode);
+
+                runOnUiThread(() -> result.success("Delivery receipts printed"));
+            } catch (Exception e) {
+                Log.e(TAG, "Delivery receipt print error", e);
+                runOnUiThread(() -> result.error("PRINT_EXCEPTION", e.getMessage(), null));
+            }
+        }).start();
+    }
+
+    private void printDeliveryReceipt(String copyType, String requestCode, String deliveryCode,
+                                     String invoiceNumber, String stationName, String address,
+                                     String phone, String date, String time, String driverName,
+                                     String cylinderCount, String cylinderDetails, String description,
+                                     String siteName, String siteCode) {
+        PrinterApi.PrnClrBuff_Api();
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnSetGray_Api(15);
+        PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
+
+        // Print logo
+        Bitmap logoBitmap = loadScaledLogo();
+        printCenteredLogo(logoBitmap);
+        PrinterApi.PrnStr_Api("\n");
+
+        // Header
+        PrinterApi.PrnFontSet_Api(28, 28, 0);
+        PrinterApi.PrnStr_Api(centerText("DELIVERY NOTE"));
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText(copyType));
+        PrinterApi.PrnStr_Api("\n");
+
+        // Station details
+        if (stationName != null && !stationName.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText(stationName));
+        }
+        if (address != null && !address.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText(address));
+        }
+        if (phone != null && !phone.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText("Tel: " + phone));
+        }
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Date and Time
+        PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Delivery details
+        PrinterApi.PrnStr_Api("Request Code: " + requestCode);
+        PrinterApi.PrnStr_Api("Delivery Code: " + deliveryCode);
+        PrinterApi.PrnStr_Api("Invoice No: " + invoiceNumber);
+        PrinterApi.PrnStr_Api("Site: " + siteName);
+        PrinterApi.PrnStr_Api("Site Code: " + siteCode);
+        PrinterApi.PrnStr_Api("Driver: " + driverName);
+        PrinterApi.PrnStr_Api("Description: " + description);
+        PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
+        PrinterApi.PrnStr_Api("--------------------------------");
+
+        // Cylinder details
+        if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
+            PrinterApi.PrnStr_Api("CYLINDER DETAILS:");
+            PrinterApi.PrnStr_Api("\n");
+            String[] lines = cylinderDetails.split("\n");
+            for (String line : lines) {
+                if (line != null && !line.trim().isEmpty()) {
+                    PrinterApi.PrnStr_Api(line.trim());
+                }
+            }
+            PrinterApi.PrnStr_Api("--------------------------------");
+        }
+
+        // Signature section
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api("Driver Signature: _______________");
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api("Received By: ____________________");
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api("Signature: ______________________");
+        PrinterApi.PrnStr_Api("\n");
+
+        // Footer
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText("Refilled cylinders"));
+        PrinterApi.PrnStr_Api(centerText("delivered successfully"));
+        PrinterApi.PrnStr_Api("\n");
+        PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
+        PrinterApi.PrnStr_Api("\n\n\n");
+        PrinterApi.PrnStart_Api();
+    }
+
+    private Bitmap loadScaledLogo() {
+        try {
+            Bitmap originalLogo = BitmapFactory.decodeResource(getResources(), R.drawable.logo);
+            if (originalLogo != null) {
+                // Scale logo to fit thermal paper (200 pixels width for better visibility)
+                int targetWidth = 200;
+                int targetHeight = (int) ((float) targetWidth / originalLogo.getWidth() * originalLogo.getHeight());
+                Bitmap scaledLogo = Bitmap.createScaledBitmap(originalLogo, targetWidth, targetHeight, true);
+                if (originalLogo != scaledLogo) {
+                    originalLogo.recycle(); // Free original bitmap memory
+                }
+                return scaledLogo;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to load logo", e);
+        }
+        return null;
+    }
+
+    private void printCenteredLogo(Bitmap logo) {
+        if (logo != null) {
+            // Get paper width in pixels (typical 58mm thermal printer = ~384 pixels)
+            int paperWidth = 384;
+            int logoWidth = logo.getWidth();
+
+            // Calculate left margin to center the logo
+            int leftMargin = (paperWidth - logoWidth) / 2;
+
+            // Create a centered bitmap with margins
+            if (leftMargin > 0) {
+                Bitmap centeredBitmap = Bitmap.createBitmap(paperWidth, logo.getHeight(), Bitmap.Config.ARGB_8888);
+                android.graphics.Canvas canvas = new android.graphics.Canvas(centeredBitmap);
+                canvas.drawColor(0xFFFFFFFF); // White background
+                canvas.drawBitmap(logo, leftMargin, 0, null);
+                PrinterApi.PrnLogo_Api(centeredBitmap);
+            } else {
+                // If logo is too wide, just print it as is
+                PrinterApi.PrnLogo_Api(logo);
+            }
+        }
+    }
+
+    private Bitmap generateQrCode(String myCodeText) throws WriterException {
+        Hashtable<EncodeHintType, ErrorCorrectionLevel> hintMap = new Hashtable<EncodeHintType, ErrorCorrectionLevel>();
+        hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H); // H = 30% damage
+
+        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+
+        int size = 350;
+
+        BitMatrix bitMatrix = qrCodeWriter.encode(myCodeText, BarcodeFormat.QR_CODE, size, size, hintMap);
+        int width = bitMatrix.getWidth();
+        int height = bitMatrix.getHeight();
+        int[] pixels = new int[width * height];
+        for (int y = 0; y < height; y++) {
+            int offset = y * width;
+            for (int x = 0; x < width; x++) {
+                pixels[offset + x] = bitMatrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF; // BLACK : WHITE
+            }
+        }
+
+        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height);
+
+        return bmp;
     }
 
 }

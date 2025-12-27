@@ -40,6 +40,24 @@ class ApiClient {
     return _processResponse(response);
   }
 
+  Future<Map<String, dynamic>> put(
+    String url, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    print('[API] PUT: $url');
+    if (body != null) print('[API] Body: ${jsonEncode(body)}');
+
+    final response = await http.put(
+      Uri.parse(url),
+      headers: {...defaultHeaders, ...?headers},
+      body: jsonEncode(body ?? {}),
+    );
+
+    _logResponse(response);
+    return _processResponse(response);
+  }
+
   void _logResponse(http.Response response) {
     print('[API] Response [${response.statusCode}]: ${response.body}');
   }
@@ -52,7 +70,33 @@ class ApiClient {
       if (decoded is Map<String, dynamic>) return decoded;
       return {'data': decoded};
     } else {
-      throw Exception('API Error: ${response.statusCode} - ${response.body}');
+      // Try to extract error message from response body
+      String errorMessage = 'An unexpected error occurred';
+
+      try {
+        final body = response.body.trim();
+        if (body.isNotEmpty) {
+          final decoded = jsonDecode(body);
+          if (decoded is Map<String, dynamic>) {
+            // Try to extract message from common error fields
+            errorMessage = (decoded['message'] ??
+                           decoded['error'] ??
+                           decoded['detail'] ??
+                           decoded['msg'])?.toString() ?? errorMessage;
+          } else if (decoded is String) {
+            errorMessage = decoded;
+          }
+        }
+      } catch (_) {
+        // If JSON parsing fails, check if body is a readable string
+        final body = response.body.trim();
+        if (body.isNotEmpty && body.length < 200 && !body.startsWith('<')) {
+          errorMessage = body;
+        }
+      }
+
+      // Throw just the error message, not the full response
+      throw Exception(errorMessage);
     }
   }
 }

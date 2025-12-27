@@ -1,7 +1,9 @@
 // providers/payment_provider.dart
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
+import '../models/customer.dart';
 import '../services/payment_service.dart';
+import '../utils/error_utils.dart';
 
 class PaymentProvider extends ChangeNotifier {
   final PaymentService _paymentService = PaymentService();
@@ -45,6 +47,8 @@ class PaymentProvider extends ChangeNotifier {
     String? operatorPin,
     Map<String, dynamic>? cardDetails,
     String? couponCode,
+    int? customerId,
+    CustomerData? customerData,
   }) async {
     _setProcessing(true);
     _setError(null);
@@ -61,6 +65,8 @@ class PaymentProvider extends ChangeNotifier {
         operatorPin: operatorPin,
         cardDetails: cardDetails,
         couponCode: couponCode,
+        customerId: customerId,
+        customerData: customerData,
       );
 
       if (transaction != null) {
@@ -75,7 +81,7 @@ class PaymentProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _setError('Payment failed: ${e.toString()}');
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Payment failed'));
       _setProcessing(false);
       return false;
     }

@@ -7,6 +7,7 @@ import '../../utils/colors.dart';
 import '../../models/transaction.dart';
 import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
+import '../../services/external_payment_service.dart';
 import 'card_payment_screen.dart';
 import 'cash_payment_screen.dart';
 // import 'mobile_payment_screen.dart'; // Temporarily disabled
@@ -78,6 +79,18 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => nextScreen),
+    );
+  }
+
+  Future<void> _launchExternalPayment(String method) async {
+    final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
+    final amount = fuelProvider.selectedAmount;
+
+    await ExternalPaymentService.launchExternalPaymentApp(
+      amount: amount,
+      currency: 'USD', // Default currency as requested
+      method: method,
+      context: context,
     );
   }
 
@@ -230,24 +243,44 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
           ),
         ),
         const SizedBox(height: 20),
-        _buildPaymentMethodCard(
-          icon: Icons.credit_card,
-          title: 'Card Payment',
-          subtitle: 'Pay with debit or credit card',
-          color: AppColors.primary,
-          method: PaymentMethod.card,
-          delay: 0,
-        ),
-        const SizedBox(height: 16),
+        // Card Payment - Commented out (Cash only for now)
+        // _buildPaymentMethodCard(
+        //   icon: Icons.credit_card,
+        //   title: 'Card Payment',
+        //   subtitle: 'Pay with debit or credit card',
+        //   color: AppColors.primary,
+        //   method: PaymentMethod.card,
+        //   delay: 0,
+        // ),
+        // const SizedBox(height: 16),
         _buildPaymentMethodCard(
           icon: Icons.money,
           title: 'Cash Payment',
           subtitle: 'Pay with cash',
           color: AppColors.primaryLight,
           method: PaymentMethod.cash,
-          delay: 100,
+          delay: 0,
         ),
-        const SizedBox(height: 16),
+        // Zimswitch Card Payment - Commented out (Cash only for now)
+        // const SizedBox(height: 16),
+        // _buildExternalPaymentMethodCard(
+        //   icon: Icons.credit_card_outlined,
+        //   title: 'Zimswitch Card Payment',
+        //   subtitle: 'Pay with Zimswitch card via external app',
+        //   color: const Color(0xFF2196F3),
+        //   method: 'Swipe',
+        //   delay: 200,
+        // ),
+        // Mobile Money Payment - Commented out (Cash only for now)
+        // const SizedBox(height: 16),
+        // _buildExternalPaymentMethodCard(
+        //   icon: Icons.phone_android,
+        //   title: 'Mobile Money Payment',
+        //   subtitle: 'Pay with EcoCash or mobile money',
+        //   color: const Color(0xFF4CAF50),
+        //   method: 'EcoCash',
+        //   delay: 300,
+        // ),
         const SizedBox(height: 20), // Extra space for visual separation
       ],
     );
@@ -323,6 +356,90 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
                       ),
                       Icon(
                         Icons.arrow_forward_ios,
+                        color: AppColors.textSecondary,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildExternalPaymentMethodCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required String method,
+    required int delay,
+  }) {
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 600 + delay),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(50 * (1 - value), 0),
+          child: Opacity(
+            opacity: value,
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: InkWell(
+                onTap: () => _launchExternalPayment(method),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withOpacity(0.1),
+                        Colors.white,
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 55,
+                        height: 55,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(icon, color: color, size: 26),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.open_in_new,
                         color: AppColors.textSecondary,
                         size: 16,
                       ),

@@ -209,17 +209,15 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
           child: Row(
             children: [
-              // Logo at the left with white border
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  color: Colors.transparent,
+              // GASMAN branding text
+              const Text(
+                'GASMAN',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
                 ),
-                clipBehavior: Clip.hardEdge,
-                child: Image.asset('images/logo.png', fit: BoxFit.cover),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -526,7 +524,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           const Icon(Icons.local_gas_station_outlined,
               size: 80, color: AppColors.primary),
           const SizedBox(height: 16),
-          const Text('No Fuel Products Available',
+          const Text('No Products Available',
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,

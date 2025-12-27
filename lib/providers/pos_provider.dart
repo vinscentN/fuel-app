@@ -463,5 +463,134 @@ class PosProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> printQRCodeReceipt({
+    required String title,
+    required String qrData,
+    required String requestCode,
+    required String stationName,
+    required String address,
+    required String phone,
+    required String date,
+    required String time,
+    required String status,
+    required String description,
+    required String cylinderCount,
+    required String cylinderDetails,
+    required String createdBy,
+  }) async {
+    _setLoading(true);
+    try {
+      final result = await _channel.invokeMethod("printQRCodeReceipt", {
+        "title": title,
+        "qrData": qrData,
+        "requestCode": requestCode,
+        "stationName": stationName,
+        "address": address,
+        "phone": phone,
+        "date": date,
+        "time": time,
+        "status": status,
+        "description": description,
+        "cylinderCount": cylinderCount,
+        "cylinderDetails": cylinderDetails,
+        "createdBy": createdBy,
+      });
+      _lastResult = {"printResult": result};
+      _lastError = null;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = e.toString();
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> printPickupReceipt({
+    required String requestCode,
+    required String stationName,
+    required String address,
+    required String phone,
+    required String date,
+    required String time,
+    required String driverName,
+    required String cylinderCount,
+    required String cylinderDetails,
+    required String description,
+    required String siteName,
+    required String siteCode,
+  }) async {
+    _setLoading(true);
+    try {
+      final result = await _channel.invokeMethod("printPickupReceipt", {
+        "requestCode": requestCode,
+        "stationName": stationName,
+        "address": address,
+        "phone": phone,
+        "date": date,
+        "time": time,
+        "driverName": driverName,
+        "cylinderCount": cylinderCount,
+        "cylinderDetails": cylinderDetails,
+        "description": description,
+        "siteName": siteName,
+        "siteCode": siteCode,
+      });
+      _lastResult = {"printResult": result};
+      _lastError = null;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = e.toString();
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> printDeliveryReceipt({
+    required String requestCode,
+    required String deliveryCode,
+    required String invoiceNumber,
+    required String stationName,
+    required String address,
+    required String phone,
+    required String date,
+    required String time,
+    required String driverName,
+    required String cylinderCount,
+    required String cylinderDetails,
+    required String description,
+    required String siteName,
+    required String siteCode,
+  }) async {
+    _setLoading(true);
+    try {
+      final result = await _channel.invokeMethod("printDeliveryReceipt", {
+        "requestCode": requestCode,
+        "deliveryCode": deliveryCode,
+        "invoiceNumber": invoiceNumber,
+        "stationName": stationName,
+        "address": address,
+        "phone": phone,
+        "date": date,
+        "time": time,
+        "driverName": driverName,
+        "cylinderCount": cylinderCount,
+        "cylinderDetails": cylinderDetails,
+        "description": description,
+        "siteName": siteName,
+        "siteCode": siteCode,
+      });
+      _lastResult = {"printResult": result};
+      _lastError = null;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = e.toString();
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
 
 }

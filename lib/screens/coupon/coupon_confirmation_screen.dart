@@ -33,7 +33,7 @@ class _CouponConfirmationScreenState extends State<CouponConfirmationScreen> {
     setState(() => _submitting = true);
 
     final ok = await payments.processPayment(
-      userId: auth.currentUser?.id ?? '0',
+      userId: auth.currentUser?.id.toString() ?? '0',
       productId: widget.coupon.product.id.toString(),
       currencyCode: 'USD', // currency_id is forced to 1 in service
       amount: _amount,

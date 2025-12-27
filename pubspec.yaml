@@ -1,5 +1,5 @@
-name: fuels_app
-description: "A new Flutter project."
+name: gasman
+description: "GASMAN - Gas Station Management System"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -39,6 +39,10 @@ dependencies:
   pin_code_fields: ^8.0.1
   flutter_credit_card: ^4.0.1
   mobile_scanner: ^3.5.7
+  android_intent_plus: ^4.0.3
+  qr_flutter: ^4.1.0
+  printing: ^5.11.1
+  pdf: ^3.10.7
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

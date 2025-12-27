@@ -40,4 +40,8 @@ class AisinoPosSdk {
     return await _channel.invokeMethod<String>("getPosType");
   }
 
+  static Future<void> beep() async {
+    await _channel.invokeMethod('beep');
+  }
+
 }

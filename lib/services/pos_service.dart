@@ -1,4 +1,4 @@
-import 'package:fuels_app/aisino_pos_sdk.dart';
+import 'package:gasman/aisino_pos_sdk.dart';
 
 class PosService {
   Future<Map?> readNfc() => AisinoPosSdk.startNfcTransaction();

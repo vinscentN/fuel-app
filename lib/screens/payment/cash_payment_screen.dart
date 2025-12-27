@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/fuel_provider.dart';
-import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pos_provider.dart';
@@ -12,7 +11,8 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/success_screen.dart';
 import '../../models/transaction.dart';
-// Operator code is collected inline on this screen; no navigation needed
+import '../../models/customer.dart';
+import '../common/customer_details_screen.dart';
 
 class CashPaymentScreen extends StatefulWidget {
   const CashPaymentScreen({super.key});
@@ -25,9 +25,6 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  String _opCode = '';
-
-  // Use app navy via AppColors.primary
 
   @override
   void initState() {
@@ -54,8 +51,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
     final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
 
     // Guard required fields
-    if (/* authProvider.currentUser == null || */
-        fuelProvider.selectedProduct == null ||
+    if (fuelProvider.selectedProduct == null ||
         fuelProvider.selectedCurrency == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Missing sale details. Please restart the sale.')),
@@ -63,23 +59,37 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
       return;
     }
 
-    // Read operator code from inline input
-    final operatorCode = _opCode.trim();
-    if (operatorCode.isEmpty || operatorCode.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid operator code (min 4 digits)')),
-      );
-      return;
+    // Navigate to customer details screen
+    final customerResult = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => const CustomerDetailsScreen(
+          title: 'Customer Details',
+          subtitle: 'Search for existing customer or add new customer details',
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    // Extract customer data from result
+    int? customerId;
+    CustomerData? customerData;
+
+    if (customerResult != null) {
+      customerId = customerResult['customerId'] as int?;
+      customerData = customerResult['customerData'] as CustomerData?;
     }
 
     final success = await paymentProvider.processPayment(
-      userId: authProvider.currentUser?.id ?? '0',
+      userId: authProvider.currentUser?.id.toString() ?? '0',
       productId: fuelProvider.selectedProduct!.id,
       currencyCode: fuelProvider.selectedCurrency!.code,
       amount: fuelProvider.selectedAmount,
       quantity: fuelProvider.selectedQuantity,
       paymentMethod: PaymentMethod.cash,
-      operatorPin: operatorCode,
+      operatorPin: authProvider.currentUser?.id.toString() ?? '0',
+      customerId: customerId,
+      customerData: customerData,
     );
 
     if (success && mounted) {
@@ -249,10 +259,10 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.security, color: AppColors.primary, size: 20),
+                  const Icon(Icons.money, color: AppColors.primary, size: 20),
                   const SizedBox(width: 12),
                   Text(
-                    'Confirm Payment',
+                    'Cash Payment',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
@@ -262,7 +272,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                'Confirm to complete the cash transaction.',
+                'Tap confirm to proceed with customer details and complete the transaction.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -282,7 +292,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Collect cash, enter your operator code and tap Confirm to complete.',
+                        'Collect cash and tap Confirm to add customer details.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppColors.primaryLight,
                             ),
@@ -290,31 +300,6 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              const SizedBox(height: 8),
-              PinCodeTextField(
-                appContext: context,
-                length: 4,
-                obscureText: true,
-                obscuringCharacter: '•',
-                keyboardType: TextInputType.number,
-                animationType: AnimationType.fade,
-                pinTheme: PinTheme(
-                  shape: PinCodeFieldShape.box,
-                  borderRadius: BorderRadius.circular(10),
-                  fieldHeight: 52,
-                  fieldWidth: 52,
-                  activeFillColor: AppColors.primary.withOpacity(0.08),
-                  inactiveFillColor: AppColors.surfaceVariant,
-                  selectedFillColor: AppColors.primary.withOpacity(0.12),
-                  activeColor: AppColors.primary,
-                  inactiveColor: AppColors.border,
-                  selectedColor: AppColors.primary,
-                ),
-                enableActiveFill: true,
-                onCompleted: (v) { setState(() { _opCode = v; }); },
-                onChanged: (v) { setState(() { _opCode = v; }); },
               ),
             ],
           ),

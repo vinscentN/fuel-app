@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/colors.dart';
 import '../../services/change_service.dart';
 import '../../widgets/common/app_bar_widget.dart';
+import 'package:gasman/aisino_pos_sdk.dart';
 
 class ChangeTopupScreen extends StatefulWidget {
   const ChangeTopupScreen({super.key});
@@ -61,6 +62,14 @@ class _ChangeTopupScreenState extends State<ChangeTopupScreen> {
         });
         return;
       }
+
+      // Beep on successful card detection
+      try {
+        await AisinoPosSdk.beep();
+      } catch (e) {
+        print('Beep failed: $e');
+      }
+
       setState(() => _pan = pan);
       await _submit(panOverride: pan);
     } finally {
@@ -90,6 +99,14 @@ class _ChangeTopupScreenState extends State<ChangeTopupScreen> {
       );
       return;
     }
+
+    // Beep on successful card detection
+    try {
+      await AisinoPosSdk.beep();
+    } catch (e) {
+      print('Beep failed: $e');
+    }
+
     setState(() => _pan = pan);
     // Auto-submit immediately after a successful tap
     await _submit(panOverride: pan);

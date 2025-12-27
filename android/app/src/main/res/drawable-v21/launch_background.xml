@@ -1,12 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Modify this file to customize your launch splash screen -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- White background -->
     <item android:drawable="@android:color/white" />
 
-    <!-- Centered splash logo -->
+    <!-- Logo centered -->
     <item>
         <bitmap
             android:gravity="center"
             android:src="@drawable/logo" />
+    </item>
+
+    <!-- Circular progress indicator below logo -->
+    <item
+        android:width="40dp"
+        android:height="40dp"
+        android:gravity="center"
+        android:top="220dp">
+        <shape android:shape="ring"
+            android:innerRadius="16dp"
+            android:thickness="3dp"
+            android:useLevel="false">
+            <solid android:color="@color/primary"/>
+        </shape>
+    </item>
+
+    <!-- Inner dot to make it look like a loader -->
+    <item
+        android:width="6dp"
+        android:height="6dp"
+        android:gravity="center"
+        android:top="237dp"
+        android:right="10dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/primary"/>
+        </shape>
     </item>
 </layer-list>

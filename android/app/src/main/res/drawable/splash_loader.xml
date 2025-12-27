@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Circular progress ring -->
+    <item
+        android:width="40dp"
+        android:height="40dp"
+        android:gravity="center"
+        android:top="200dp">
+        <shape android:shape="ring"
+            android:innerRadius="15dp"
+            android:thickness="3dp"
+            android:useLevel="false">
+            <solid android:color="@color/primary"/>
+        </shape>
+    </item>
+</layer-list>

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/pos_service.dart';
 import '../../utils/colors.dart';
-import 'dashboard_screen.dart';
-import '../coupon/coupon_redemption_screen.dart';
-import '../card/card_balance_screen.dart';
-import '../card/card_pin_reset_screen.dart';
-import '../change/change_topup_screen.dart';
+import '../auth/mobile_login_screen.dart';
+import '../gas_order/select_cylinders_screen.dart';
+import '../gas_order/pending_requests_screen.dart';
+import '../gas_order/delivery_scan_screen.dart';
+import '../reports/incident_report_screen.dart';
+import '../reports/generator_log_screen.dart';
 import '../reports/reports_menu_screen.dart';
+import 'dashboard_screen.dart';
 
 class LandingMenuScreen extends StatefulWidget {
   const LandingMenuScreen({super.key});
@@ -18,67 +19,141 @@ class LandingMenuScreen extends StatefulWidget {
 }
 
 class _LandingMenuScreenState extends State<LandingMenuScreen> {
-
   Future<void> _handleSale() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final user = auth.currentUser;
+
     if (!auth.isDeviceActive) {
-      // Device should have been activated on splash; if not, just inform the user.
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Device not activated')), 
+        const SnackBar(content: Text('Device not activated')),
       );
       return;
     }
-    // Always fetch fresh products when SALE is tapped
-    print('[LandingMenu] SALE tapped. Fetching latest products...');
-    await auth.fetchLatestProducts();
-    print('[LandingMenu] Products available after ensure: ${auth.products.length}');
+
+    if (user == null || user.serviceStationId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Service station not found')),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    // Fetch products by service station ID
+    print('[LandingMenu] SALE tapped. Fetching products for station: ${user.serviceStationId}');
+    await auth.fetchProductsByStation();
+    print('[LandingMenu] Products available after fetch: ${auth.products.length}');
+
     if (!mounted) return;
+
+    // Close loading indicator
+    Navigator.of(context).pop();
+
+    // Navigate to dashboard
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
     );
   }
 
+  Future<void> _handleLogout() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await authProvider.logout();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MobileLoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final user = auth.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 1,
-        centerTitle: true,
+        centerTitle: false,
         title: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            // Logo on the left
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+            const Text(
+              'GASMAN',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.5,
+                fontFamily: 'Sans-serif',
               ),
-              clipBehavior: Clip.hardEdge,
-              child: Image.asset('images/logo.png', fit: BoxFit.cover),
             ),
-            const SizedBox(width: 8),
-            // Station name with reduced font size
-            Flexible(
-              child: Text(
-                (auth.serviceStationName?.isNotEmpty == true
-                    ? auth.serviceStationName!
-                    : 'Fuel Mate'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16, // reduced size
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+            const SizedBox(width: 12),
+            if (user?.fullName != null) ...[
+              Container(
+                height: 24,
+                width: 1,
+                color: Colors.white.withOpacity(0.3),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  user!.fullName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
+        actions: [
+          // Logout button
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Logout',
+            onPressed: _handleLogout,
+          ),
+        ],
       ),
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -87,27 +162,8 @@ class _LandingMenuScreenState extends State<LandingMenuScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Removed header card above SALE per request
-              _MenuList(
-                onSale: _handleSale,
-                onCoupon: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CouponRedemptionScreen()),
-                ),
-                onReports: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ReportsMenuScreen()),
-                ),
-                onChange: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ChangeTopupScreen()),
-                  );
-                },
-                onBalance: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CardBalanceScreen()),
-                ),
-                onPinReset: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CardPinResetScreen()),
-                ),
-              ),
+              // Menu list for attendants
+              _MenuList(onSale: _handleSale),
             ],
           ),
         ),
@@ -133,24 +189,13 @@ class _LandingMenuScreenState extends State<LandingMenuScreen> {
 
 class _MenuList extends StatelessWidget {
   final VoidCallback onSale;
-  final VoidCallback onCoupon;
-  final VoidCallback onReports;
-  final VoidCallback onChange;
-  final VoidCallback onBalance;
-  final VoidCallback onPinReset;
 
-  const _MenuList({
-    required this.onSale,
-    required this.onCoupon,
-    required this.onReports,
-    required this.onChange,
-    required this.onBalance,
-    required this.onPinReset,
-  });
+  const _MenuList({required this.onSale});
 
   @override
   Widget build(BuildContext context) {
     final items = <_MenuItem>[
+      // SALE menu item
       _MenuItem(
         title: 'SALE',
         subtitle: 'Start a new fuel sale',
@@ -158,41 +203,112 @@ class _MenuList extends StatelessWidget {
         color: AppColors.primary,
         onTap: onSale,
       ),
+
+      // New menu items for attendants
+      // Commented out for now - may be needed later
+      // _MenuItem(
+      //   title: 'FILL ORDER REQUEST',
+      //   subtitle: 'Create cylinder refill requests',
+      //   icon: Icons.propane_tank,
+      //   color: const Color(0xFF6366F1),
+      //   onTap: () {
+      //     Navigator.of(context).push(
+      //       MaterialPageRoute(builder: (_) => const SelectCylindersScreen()),
+      //     );
+      //   },
+      // ),
       _MenuItem(
-        title: 'COUPON SALE',
-        subtitle: 'Redeem a prepaid fuel voucher',
-        icon: Icons.card_giftcard,
-        color: AppColors.secondary,
-        onTap: onCoupon,
+        title: 'PENDING REQUESTS',
+        subtitle: 'Add cylinders and view QR codes',
+        icon: Icons.qr_code_2,
+        color: const Color(0xFF8B5CF6),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const PendingRequestsScreen()),
+          );
+        },
       ),
       _MenuItem(
-        title: 'BALANCE ENQUIRY',
-        subtitle: 'Check card balances',
-        icon: Icons.account_balance_wallet,
-        color: AppColors.success,
-        onTap: onBalance,
+        title: 'RECEIVE DELIVERY',
+        subtitle: 'Scan QR to receive cylinder deliveries',
+        icon: Icons.qr_code_scanner,
+        color: const Color(0xFF10B981),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const DeliveryScanScreen()),
+          );
+        },
       ),
       _MenuItem(
-        title: 'CARD PIN RESET',
-        subtitle: 'Set a new 4-digit card PIN',
-        icon: Icons.pin,
-        color: AppColors.error,
-        onTap: onPinReset,
+        title: 'INCIDENT REPORTS',
+        subtitle: 'Report issues at your station',
+        icon: Icons.report_problem,
+        color: const Color(0xFFFF9800),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const IncidentReportScreen()),
+          );
+        },
+      ),
+      _MenuItem(
+        title: 'GENERATOR USAGE',
+        subtitle: 'Track generator running times',
+        icon: Icons.power,
+        color: const Color(0xFFE91E63),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const GeneratorLogScreen()),
+          );
+        },
       ),
       _MenuItem(
         title: 'REPORTS',
         subtitle: 'Batch cutoff, last sale, audit, reversals',
         icon: Icons.bar_chart,
-        color: AppColors.info,
-        onTap: onReports,
+        color: const Color(0xFF0EA5E9),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ReportsMenuScreen()),
+          );
+        },
       ),
-      _MenuItem(
-        title: 'CHANGE',
-        subtitle: 'Float top-up and change requests',
-        icon: Icons.swap_horiz,
-        color: AppColors.warning,
-        onTap: onChange,
-      ),
+
+      // Commented out old menu items (can be re-enabled if needed)
+      // _MenuItem(
+      //   title: 'COUPON SALE',
+      //   subtitle: 'Redeem a prepaid fuel voucher',
+      //   icon: Icons.card_giftcard,
+      //   color: AppColors.secondary,
+      //   onTap: onCoupon,
+      // ),
+      // _MenuItem(
+      //   title: 'BALANCE ENQUIRY',
+      //   subtitle: 'Check card balances',
+      //   icon: Icons.account_balance_wallet,
+      //   color: AppColors.success,
+      //   onTap: onBalance,
+      // ),
+      // _MenuItem(
+      //   title: 'CARD PIN RESET',
+      //   subtitle: 'Set a new 4-digit card PIN',
+      //   icon: Icons.pin,
+      //   color: AppColors.error,
+      //   onTap: onPinReset,
+      // ),
+      // _MenuItem(
+      //   title: 'REPORTS',
+      //   subtitle: 'Batch cutoff, last sale, audit, reversals',
+      //   icon: Icons.bar_chart,
+      //   color: AppColors.info,
+      //   onTap: onReports,
+      // ),
+      // _MenuItem(
+      //   title: 'CHANGE',
+      //   subtitle: 'Float top-up and change requests',
+      //   icon: Icons.swap_horiz,
+      //   color: AppColors.warning,
+      //   onTap: onChange,
+      // ),
     ];
     return Column(
       children: [

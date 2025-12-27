@@ -1,4 +1,4 @@
-import 'package:fuels_app/services/api_client.dart';
+import 'package:gasman/services/api_client.dart';
 import '../constants/api_constants.dart';
 
 class ReportService {
