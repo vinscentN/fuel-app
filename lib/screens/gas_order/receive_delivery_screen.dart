@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../models/gas_order.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/pos_provider.dart';
 import '../../services/gas_order_service.dart';
 
 class ReceiveDeliveryScreen extends StatefulWidget {
@@ -66,7 +68,7 @@ class _ReceiveDeliveryScreenState extends State<ReceiveDeliveryScreen> {
       if (weightText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please enter received weight for ${item.gasTank.name}'),
+            content: Text('Please enter received weight for ${item.gasTank.trackingCode ?? item.gasTank.name}'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -77,7 +79,7 @@ class _ReceiveDeliveryScreenState extends State<ReceiveDeliveryScreen> {
       if (weight == null || weight <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invalid weight for ${item.gasTank.name}'),
+            content: Text('Invalid weight for ${item.gasTank.trackingCode ?? item.gasTank.name}'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -147,6 +149,9 @@ class _ReceiveDeliveryScreenState extends State<ReceiveDeliveryScreen> {
       );
 
       if (mounted) {
+        // Print delivery receipt
+        await _printDeliveryReceipt(authProvider, user, tanks);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✓ Delivery received successfully!'),
@@ -168,6 +173,83 @@ class _ReceiveDeliveryScreenState extends State<ReceiveDeliveryScreen> {
           ),
         );
         setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Future<void> _printDeliveryReceipt(
+    AuthProvider authProvider,
+    dynamic user,
+    List<Map<String, dynamic>> receivedTanks,
+  ) async {
+    try {
+      final posProvider = Provider.of<PosProvider>(context, listen: false);
+      final now = DateTime.now();
+      final dateFormatter = DateFormat('dd/MM/yyyy');
+      final timeFormatter = DateFormat('HH:mm:ss');
+
+      // Get selected items with their received weights
+      final selectedItems = widget.order.items.where((item) {
+        return receivedTanks.any((tank) => tank['item_id'] == item.id);
+      }).toList();
+
+      // Format cylinder details with received weights
+      final cylinderDetails = selectedItems.map((item) {
+        final receivedTank = receivedTanks.firstWhere(
+          (tank) => tank['item_id'] == item.id,
+        );
+        final receivedWeight = receivedTank['received_weight'];
+        final trackingCode = item.gasTank.trackingCode ?? item.gasTank.name;
+        final cylinderType = item.gasTank.cylinderType?.name ?? 'N/A';
+
+        return '$trackingCode ($cylinderType)\n'
+            'Capacity: ${item.gasTank.capacity.toStringAsFixed(0)} kg\n'
+            'After Refill: ${item.afterRefillWeight} kg\n'
+            'Received Weight: $receivedWeight kg';
+      }).join('\n\n');
+
+      final deliveryCode = widget.order.deliveryCode ?? 'N/A';
+      final driverName = widget.order.deliveryDoneBy ?? 'N/A';
+      final attendantName = user.fullName;
+
+      // Print delivery receipt
+      await posProvider.printDeliveryReceipt(
+        requestCode: widget.order.requestCode,
+        deliveryCode: deliveryCode,
+        invoiceNumber: widget.order.invoiceNumber ?? 'N/A',
+        stationName: authProvider.serviceStationName ?? 'N/A',
+        address: authProvider.serviceStationAddress ?? '',
+        phone: authProvider.serviceStationPhone ?? '',
+        date: dateFormatter.format(now),
+        time: timeFormatter.format(now),
+        driverName: driverName,
+        cylinderCount: selectedItems.length.toString(),
+        cylinderDetails: cylinderDetails,
+        description: 'Received by: $attendantName\n${widget.order.description}',
+        siteName: widget.order.site.name,
+        siteCode: widget.order.site.stationCode ?? 'N/A',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Delivery receipt printed'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Print error but don't block the flow
+      debugPrint('Delivery receipt printing failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Print failed: ${e.toString()}'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -304,7 +386,7 @@ class _ReceiveDeliveryScreenState extends State<ReceiveDeliveryScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.gasTank.name,
+                                  item.gasTank.trackingCode ?? item.gasTank.name,
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,

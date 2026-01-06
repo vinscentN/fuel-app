@@ -92,7 +92,7 @@ class _DeliveryQRCodeScreenState extends State<DeliveryQRCodeScreen> {
 
       // Build cylinder details as a string
       final cylinderDetails = _order!.items.map((item) {
-        return '${item.gasTank.name}: ${item.afterRefillWeight} ${item.gasTank.unit}';
+        return '${item.gasTank.trackingCode ?? item.gasTank.name}: ${item.afterRefillWeight} ${item.gasTank.unit}';
       }).join('\n');
 
       // Print using the POS printer with delivery code
@@ -337,48 +337,111 @@ class _DeliveryQRCodeScreenState extends State<DeliveryQRCodeScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                ..._order!.items.map((item) {
+                                ..._order!.items.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
                                   return Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(12),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.grey[300]!),
+                                      color: const Color(0xFFF8F9FB),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.grey[200]!,
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          item.gasTank.name,
-                                          style: const TextStyle(
-                                            color: Colors.black87,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        Row(
+                                          children: [
+                                            // Number badge
+                                            Container(
+                                              width: 32,
+                                              height: 32,
+                                              decoration: BoxDecoration(
+                                                gradient: AppColors.modernGradient,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  '${index + 1}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            // Cylinder info
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    item.gasTank.trackingCode ?? item.gasTank.name,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.black87,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    '${item.gasTank.cylinderType?.name ?? "N/A"} • ${item.gasTank.capacity.toStringAsFixed(0)} ${item.gasTank.unit}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Tracking Code: ${item.gasTank.trackingCode}',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 12,
+                                        const SizedBox(height: 10),
+                                        // After refill weight section
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.success.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: AppColors.success.withOpacity(0.3),
+                                              width: 1,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${item.gasTank.cylinderType?.name ?? "N/A"} • ${item.gasTank.capacity.toStringAsFixed(0)} ${item.gasTank.unit}',
-                                          style: const TextStyle(
-                                            color: Colors.black54,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'After Refill Weight: ${item.afterRefillWeight} ${item.gasTank.unit}',
-                                          style: TextStyle(
-                                            color: AppColors.primary,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.scale,
+                                                size: 16,
+                                                color: AppColors.success,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'After Refill Weight:',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[700],
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                '${item.afterRefillWeight} ${item.gasTank.unit}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.success,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],

@@ -5,7 +5,7 @@ import '../../utils/colors.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../fuel/amount_input_screen.dart';
 import '../coupon/coupon_redemption_screen.dart';
-import '../auth/login_screen.dart';
+import '../auth/mobile_login_screen.dart';
 import '../auth/login_settings_screen.dart';
 import 'landing_menu_screen.dart';
 import '../../models/product.dart';
@@ -93,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const MobileLoginScreen()),
               (route) => false,
         );
       }
@@ -173,79 +173,35 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          SlideTransition(
-            position: _slideAnimation,
-            child: _buildModernHeader(),
-          ),
-          Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: _buildBody(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModernHeader() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        final user = authProvider.currentUser;
-        return Container(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 20,
-            right: 20,
-            bottom: 24,
-          ),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
           decoration: const BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(28),
-            ),
+            gradient: AppColors.modernGradient,
           ),
-          child: Row(
-            children: [
-              // GASMAN branding text
-              const Text(
-                'GASMAN',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
-                ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: false,
+            title: const Text(
+              'GASMAN',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.5,
+                fontFamily: 'Sans-serif',
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      (authProvider.serviceStationName ?? user?.serviceStationName ?? '').isNotEmpty
-                          ? (authProvider.serviceStationName ?? user?.serviceStationName ?? '')
-                          : 'Station',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    // Attendant name removed per request
-                  ],
-                ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout_rounded),
+                tooltip: 'Logout',
+                onPressed: _handleLogout,
               ),
               IconButton(
-                icon: const Icon(Icons.settings_rounded, color: Colors.white),
-                onPressed: _openSettings,
-              ),
-              IconButton(
-                icon: const Icon(Icons.home_rounded, color: Colors.white),
+                icon: const Icon(Icons.home_rounded),
                 tooltip: 'Main Menu',
                 onPressed: () {
                   Navigator.of(context).pushAndRemoveUntil(
@@ -256,8 +212,12 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: _buildBody(),
+      ),
     );
   }
 
@@ -326,13 +286,13 @@ class _DashboardScreenState extends State<DashboardScreen>
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 width: 4,
-                height: 48,
+                height: 56,
                 decoration: BoxDecoration(
                   color: primary,
                   borderRadius: BorderRadius.circular(4),
@@ -340,12 +300,12 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
               const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.08),
+                  color: const Color(0xFFFF5722).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.local_gas_station_rounded, color: AppColors.primary, size: 20),
+                child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF5722), size: 28),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -521,8 +481,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.local_gas_station_outlined,
-              size: 80, color: AppColors.primary),
+          const Icon(Icons.local_fire_department_rounded,
+              size: 80, color: Color(0xFFFF5722)),
           const SizedBox(height: 16),
           const Text('No Products Available',
               style: TextStyle(

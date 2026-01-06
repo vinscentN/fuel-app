@@ -5,11 +5,14 @@ import '../../providers/fuel_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../utils/colors.dart';
 import '../../models/transaction.dart';
+import '../../models/customer.dart';
 import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../services/external_payment_service.dart';
 import 'card_payment_screen.dart';
 import 'cash_payment_screen.dart';
+import 'transaction_processing_screen.dart';
+import '../common/customer_details_screen.dart';
 // import 'mobile_payment_screen.dart'; // Temporarily disabled
 
 class PaymentMethodScreen extends StatefulWidget {
@@ -51,17 +54,19 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
     super.dispose();
   }
 
-  void _selectPaymentMethod(PaymentMethod method) {
+  void _selectPaymentMethod(PaymentMethod method) async {
     final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
     paymentProvider.selectPaymentMethod(method);
 
-    Widget nextScreen;
     switch (method) {
       case PaymentMethod.card:
-        nextScreen = const CardPaymentScreen();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CardPaymentScreen()),
+        );
         break;
       case PaymentMethod.cash:
-        nextScreen = const CashPaymentScreen();
+        // Skip cash payment screen, go directly to customer details
+        await _processCashPayment();
         break;
       case PaymentMethod.mobile:
         // Mobile money flow disabled for now
@@ -76,9 +81,49 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         );
         return;
     }
+  }
 
+  Future<void> _processCashPayment() async {
+    final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
+
+    // Guard required fields
+    if (fuelProvider.selectedProduct == null ||
+        fuelProvider.selectedCurrency == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing sale details. Please restart the sale.')),
+      );
+      return;
+    }
+
+    // Navigate to customer details screen
+    final customerResult = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => const CustomerDetailsScreen(
+          title: 'Customer Details',
+          subtitle: 'Search for existing customer or add new customer details',
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    // Extract customer data from result
+    int? customerId;
+    CustomerData? customerData;
+
+    if (customerResult != null) {
+      customerId = customerResult['customerId'] as int?;
+      customerData = customerResult['customerData'] as CustomerData?;
+    }
+
+    // Navigate to transaction processing screen
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => nextScreen),
+      MaterialPageRoute(
+        builder: (_) => TransactionProcessingScreen(
+          customerId: customerId,
+          customerData: customerData,
+        ),
+      ),
     );
   }
 

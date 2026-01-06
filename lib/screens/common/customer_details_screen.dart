@@ -33,6 +33,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
   bool _isSearching = false;
   bool _showNewCustomerForm = false;
   bool _showSearchResults = false;
+  bool _isProcessing = false;
 
   @override
   void dispose() {
@@ -145,11 +146,18 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
   }
 
   void _skipCustomerDetails() {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
     // Return null to indicate no customer details
     Navigator.of(context).pop(null);
   }
 
   void _confirmCustomerDetails() {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
     if (_selectedCustomer != null) {
       // Return existing customer ID
       Navigator.of(context).pop({
@@ -162,6 +170,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
       final phone = _phoneController.text.trim();
 
       if (name.isEmpty) {
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please enter customer name'),
@@ -172,6 +181,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
       }
 
       if (phone.isEmpty) {
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please enter a phone number'),
@@ -199,6 +209,9 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if we should show the confirm button
+    final showConfirmButton = _selectedCustomer != null || _showNewCustomerForm;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -209,7 +222,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -340,6 +353,47 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                         ],
                       ),
               ),
+
+              const SizedBox(height: 16),
+
+              // Continue without customer button (default, always visible)
+              if (!showConfirmButton) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: _isProcessing ? null : _skipCustomerDetails,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[700],
+                      side: BorderSide(color: Colors.grey[300]!, width: 1.5),
+                      backgroundColor: Colors.grey[50],
+                      disabledForegroundColor: Colors.grey[400],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_off_outlined,
+                          size: 20,
+                          color: _isProcessing ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Continue without customer',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: _isProcessing ? Colors.grey[400] : Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 24),
 
@@ -612,37 +666,56 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                 ),
               ],
 
-              const SizedBox(height: 24),
+              // Confirm button (only show after search)
+              if (showConfirmButton) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isProcessing ? null : _confirmCustomerDetails,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shadowColor: AppColors.primary.withOpacity(0.3),
+                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isProcessing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Confirm & Continue',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
 
-              // Action buttons
-              Column(
-                children: [
-                  CustomButton(
-                    onPressed: _confirmCustomerDetails,
-                    backgroundColor: AppColors.primary,
-                    child: const Text(
-                      'Confirm & Continue',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  CustomButton(
-                    onPressed: _skipCustomerDetails,
-                    backgroundColor: AppColors.secondaryDark,
-                    child: const Text(
-                      'Skip (Continue without customer)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),

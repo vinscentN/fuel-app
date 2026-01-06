@@ -4,6 +4,7 @@ import '../../models/gas_tank.dart';
 import '../../models/gas_order.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/gas_order_service.dart';
+import '../../utils/colors.dart';
 import 'confirm_cylinders_screen.dart';
 
 class EditCylindersScreen extends StatefulWidget {
@@ -138,7 +139,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Please enter bottom edge weight for ${tank.trackingCode ?? tank.name}',
+              'Please enter before refill weight for ${tank.trackingCode ?? tank.name}',
             ),
             backgroundColor: Colors.orange,
           ),
@@ -236,12 +237,12 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                                      color: AppColors.primary.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Icon(
                                       Icons.receipt_long,
-                                      color: Color(0xFF6366F1),
+                                      color: AppColors.primary,
                                       size: 18,
                                     ),
                                   ),
@@ -275,7 +276,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF10B981),
+                                        color: AppColors.success,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -381,14 +382,14 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                           color: isSelected
-                                              ? const Color(0xFF6366F1)
+                                              ? AppColors.primary
                                               : Colors.grey[200]!,
                                           width: isSelected ? 2 : 1,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
                                             color: isSelected
-                                                ? const Color(0xFF6366F1).withOpacity(0.1)
+                                                ? AppColors.primary.withOpacity(0.1)
                                                 : Colors.black.withOpacity(0.02),
                                             blurRadius: isSelected ? 8 : 4,
                                             offset: const Offset(0, 2),
@@ -414,11 +415,11 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                                     height: 22,
                                                     decoration: BoxDecoration(
                                                       color: isSelected
-                                                          ? const Color(0xFF6366F1)
+                                                          ? AppColors.primary
                                                           : Colors.transparent,
                                                       border: Border.all(
                                                         color: isSelected
-                                                            ? const Color(0xFF6366F1)
+                                                            ? AppColors.primary
                                                             : Colors.grey[300]!,
                                                         width: 2,
                                                       ),
@@ -444,7 +445,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                                             fontSize: 14,
                                                             fontWeight: FontWeight.w600,
                                                             color: isSelected
-                                                                ? const Color(0xFF6366F1)
+                                                                ? AppColors.primary
                                                                 : Colors.black87,
                                                           ),
                                                           maxLines: 1,
@@ -469,7 +470,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                                         vertical: 4,
                                                       ),
                                                       decoration: BoxDecoration(
-                                                        color: const Color(0xFF10B981).withOpacity(0.1),
+                                                        color: AppColors.success.withOpacity(0.1),
                                                         borderRadius: BorderRadius.circular(6),
                                                       ),
                                                       child: const Text(
@@ -477,7 +478,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                                         style: TextStyle(
                                                           fontSize: 10,
                                                           fontWeight: FontWeight.w600,
-                                                          color: Color(0xFF10B981),
+                                                          color: AppColors.success,
                                                         ),
                                                       ),
                                                     ),
@@ -499,7 +500,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                                       fontWeight: FontWeight.w600,
                                                     ),
                                                     decoration: InputDecoration(
-                                                      hintText: 'Enter weight',
+                                                      hintText: 'Before refill weight',
                                                       hintStyle: TextStyle(
                                                         color: Colors.grey[400],
                                                         fontWeight: FontWeight.normal,
@@ -553,15 +554,11 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                               width: double.infinity,
                               height: 56,
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
+                                gradient: AppColors.modernGradient,
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                                    color: AppColors.primary.withOpacity(0.3),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),

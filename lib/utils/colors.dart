@@ -45,11 +45,29 @@ class AppColors {
   static const Color cashColor = Color(0xFF059669);
   static const Color mobileColor = Color(0xFFEA580C);
 
-  // Gradient colors
+  // Gradient colors - Modern Navy Theme
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [primary, primaryDark],
+  );
+
+  static const LinearGradient modernGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [Color(0xFF1E3A8A), Color(0xFF3730A3)],  // Navy to Indigo
+  );
+
+  static const LinearGradient accentGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [Color(0xFF3B82F6), Color(0xFF1E40AF)],  // Light to dark blue
+  );
+
+  static const LinearGradient successGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [Color(0xFF10B981), Color(0xFF059669)],
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
@@ -57,4 +75,17 @@ class AppColors {
     end: Alignment.bottomCenter,
     colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
   );
+
+  // Modern UI Colors (Navy Blue Theme)
+  static const Color navyPrimary = Color(0xFF1E3A8A);
+  static const Color navyDark = Color(0xFF162E6B);
+  static const Color navyLight = Color(0xFF3B82F6);
+  static const Color indigo = Color(0xFF3730A3);
+  static const Color indigoLight = Color(0xFF6366F1);
+
+  // Card and Surface colors
+  static const Color cardBackground = Color(0xFFFFFFFF);
+  static const Color cardHover = Color(0xFFF8F9FB);
+  static const Color selectedBorder = Color(0xFF1E3A8A);
+  static const Color unselectedBorder = Color(0xFFE5E7EB);
 }

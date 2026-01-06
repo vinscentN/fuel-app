@@ -73,9 +73,6 @@ class _SitePickupDetailsScreenState extends State<SitePickupDetailsScreen> {
       );
 
       if (mounted) {
-        // Print pickup receipts (driver copy and attendant copy)
-        await _printPickupReceipts(authProvider, user);
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✓ Pickup confirmed successfully!'),
@@ -97,63 +94,6 @@ class _SitePickupDetailsScreenState extends State<SitePickupDetailsScreen> {
           ),
         );
         setState(() => _isConfirming = false);
-      }
-    }
-  }
-
-  Future<void> _printPickupReceipts(AuthProvider authProvider, dynamic user) async {
-    try {
-      final posProvider = Provider.of<PosProvider>(context, listen: false);
-      final now = DateTime.now();
-      final dateFormatter = DateFormat('dd/MM/yyyy');
-      final timeFormatter = DateFormat('HH:mm:ss');
-
-      // Format cylinder details
-      final cylinderDetails = widget.order.items.map((item) {
-        return '${item.gasTank.name} (${item.gasTank.trackingCode ?? 'N/A'})\n'
-            'Type: ${item.gasTank.cylinderType?.name ?? 'N/A'}\n'
-            'Capacity: ${item.gasTank.capacity.toStringAsFixed(0)} ${item.gasTank.unit}\n'
-            'Bottom Weight: ${item.manualBottomEdgeWeight} ${item.gasTank.unit}';
-      }).join('\n\n');
-
-      // Print pickup receipt (printer will handle copies)
-      await posProvider.printPickupReceipt(
-        requestCode: widget.order.requestCode,
-        stationName: authProvider.serviceStationName ?? 'N/A',
-        address: authProvider.serviceStationAddress ?? '',
-        phone: authProvider.serviceStationPhone ?? '',
-        date: dateFormatter.format(now),
-        time: timeFormatter.format(now),
-        driverName: user.firstName != null && user.lastName != null
-            ? '${user.firstName} ${user.lastName}'
-            : user.username,
-        cylinderCount: widget.order.items.length.toString(),
-        cylinderDetails: cylinderDetails,
-        description: widget.order.description,
-        siteName: widget.order.site.name,
-        siteCode: widget.order.site.stationCode ?? 'N/A',
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pickup receipt printed'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      // Print error but don't block the flow
-      debugPrint('Pickup receipt printing failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Print failed: ${e.toString()}'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 2),
-          ),
-        );
       }
     }
   }
@@ -297,7 +237,7 @@ class _SitePickupDetailsScreenState extends State<SitePickupDetailsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.gasTank.name,
+                                  item.gasTank.trackingCode ?? item.gasTank.name,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -306,7 +246,7 @@ class _SitePickupDetailsScreenState extends State<SitePickupDetailsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Tracking Code: ${item.gasTank.trackingCode ?? 'N/A'}',
+                                  'Type: ${item.gasTank.cylinderType?.name ?? 'N/A'}',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.textSecondary,

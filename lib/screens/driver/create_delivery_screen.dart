@@ -27,14 +27,52 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   final Map<int, bool> _selectedTanks = {};
 
   bool _isSubmitting = false;
+  bool _isLoadingDetails = true;
+  GasOrder? _fullOrderDetails;
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers and selection for each tank
-    for (var item in widget.order.itemsPreview) {
-      _weightControllers[item.itemId] = TextEditingController();
-      _selectedTanks[item.itemId] = true; // Select all by default
+    _loadFullOrderDetails();
+  }
+
+  Future<void> _loadFullOrderDetails() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      final orderDetails = await _gasOrderService.getOrderByRequestCode(
+        widget.order.requestCode,
+        token,
+      );
+
+      setState(() {
+        _fullOrderDetails = orderDetails;
+        _isLoadingDetails = false;
+
+        // Initialize controllers and selection for each tank using full order details
+        for (var item in orderDetails.items) {
+          _weightControllers[item.id] = TextEditingController();
+          _selectedTanks[item.id] = true; // Select all by default
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingDetails = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load order details: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -48,6 +86,16 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   }
 
   Future<void> _submitDelivery() async {
+    if (_fullOrderDetails == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order details not loaded'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     // Validate invoice number
     if (_invoiceController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,9 +107,9 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       return;
     }
 
-    // Get selected tanks
-    final selectedItems = widget.order.itemsPreview.where((item) {
-      return _selectedTanks[item.itemId] == true;
+    // Get selected tanks using full order details
+    final selectedItems = _fullOrderDetails!.items.where((item) {
+      return _selectedTanks[item.id] == true;
     }).toList();
 
     if (selectedItems.isEmpty) {
@@ -77,12 +125,13 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     // Validate weights
     final tanks = <Map<String, dynamic>>[];
     for (var item in selectedItems) {
-      final weightText = _weightControllers[item.itemId]?.text.trim() ?? '';
+      final trackingCode = item.gasTank.trackingCode ?? item.gasTank.name;
+      final weightText = _weightControllers[item.id]?.text.trim() ?? '';
 
       if (weightText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please enter weight for ${item.tankName}'),
+            content: Text('Please enter weight for $trackingCode'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -93,7 +142,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       if (weight == null || weight <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invalid weight for ${item.tankName}'),
+            content: Text('Invalid weight for $trackingCode'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -101,7 +150,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       }
 
       tanks.add({
-        'item_id': item.itemId,
+        'item_id': item.id,
         'after_refill_weight': weight,
       });
     }
@@ -159,21 +208,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       );
 
       if (mounted) {
-        // Fetch the updated order to get the delivery code
-        final updatedOrder = await _gasOrderService.getOrderByRequestCode(
-          widget.order.requestCode,
-          token,
-        );
-
-        // Print delivery receipts (driver copy and attendant copy)
-        await _printDeliveryReceipts(
-          authProvider,
-          user,
-          updatedOrder,
-          _invoiceController.text.trim(),
-          selectedItems,
-        );
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✓ Delivery created successfully!'),
@@ -199,77 +233,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     }
   }
 
-  Future<void> _printDeliveryReceipts(
-    AuthProvider authProvider,
-    dynamic user,
-    GasOrder order,
-    String invoiceNumber,
-    List<TankPreview> selectedItems,
-  ) async {
-    try {
-      final posProvider = Provider.of<PosProvider>(context, listen: false);
-      final now = DateTime.now();
-      final dateFormatter = DateFormat('dd/MM/yyyy');
-      final timeFormatter = DateFormat('HH:mm:ss');
-
-      // Format cylinder details with weights
-      final cylinderDetails = selectedItems.map((item) {
-        final weightController = _weightControllers[item.itemId];
-        final afterRefillWeight = weightController?.text.trim() ?? 'N/A';
-
-        return '${item.tankName} (${item.trackingCode})\n'
-            'Type: ${item.cylinderType}\n'
-            'Capacity: ${item.capacity} kg\n'
-            'Bottom Weight: ${item.bottomWeight} kg\n'
-            'After Refill: $afterRefillWeight kg';
-      }).join('\n\n');
-
-      final deliveryCode = order.deliveryCode ?? 'N/A';
-
-      // Print delivery receipt (printer will handle copies)
-      await posProvider.printDeliveryReceipt(
-        requestCode: order.requestCode,
-        deliveryCode: deliveryCode,
-        invoiceNumber: invoiceNumber,
-        stationName: authProvider.serviceStationName ?? 'N/A',
-        address: authProvider.serviceStationAddress ?? '',
-        phone: authProvider.serviceStationPhone ?? '',
-        date: dateFormatter.format(now),
-        time: timeFormatter.format(now),
-        driverName: user.firstName != null && user.lastName != null
-            ? '${user.firstName} ${user.lastName}'
-            : user.username,
-        cylinderCount: selectedItems.length.toString(),
-        cylinderDetails: cylinderDetails,
-        description: order.description,
-        siteName: order.site.name,
-        siteCode: order.site.stationCode ?? 'N/A',
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Delivery receipt printed'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      // Print error but don't block the flow
-      debugPrint('Delivery receipt printing failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Print failed: ${e.toString()}'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -280,11 +243,29 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         foregroundColor: Colors.white,
         elevation: 1,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: _isLoadingDetails
+          ? const Center(child: CircularProgressIndicator())
+          : _fullOrderDetails == null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text('Failed to load order details'),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Go Back'),
+                      ),
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
             // Order info card
             Card(
               elevation: 2,
@@ -365,8 +346,10 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             ),
             const SizedBox(height: 12),
 
-            ...widget.order.itemsPreview.map((item) {
-              final isSelected = _selectedTanks[item.itemId] ?? false;
+            ..._fullOrderDetails!.items.map((item) {
+              final isSelected = _selectedTanks[item.id] ?? false;
+              final trackingCode = item.gasTank.trackingCode ?? item.gasTank.name;
+              final cylinderType = item.gasTank.cylinderType?.name ?? 'N/A';
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -385,7 +368,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                             value: isSelected,
                             onChanged: (value) {
                               setState(() {
-                                _selectedTanks[item.itemId] = value ?? false;
+                                _selectedTanks[item.id] = value ?? false;
                               });
                             },
                             activeColor: AppColors.primary,
@@ -395,7 +378,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.tankName,
+                                  trackingCode,
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -404,14 +387,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Type: ${item.cylinderType}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                Text(
-                                  'Tracking: ${item.trackingCode}',
+                                  'Type: $cylinderType',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
@@ -440,7 +416,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                                     ),
                                   ),
                                   Text(
-                                    '${item.capacity} kg',
+                                    '${item.gasTank.capacity} kg',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -462,7 +438,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                                     ),
                                   ),
                                   Text(
-                                    '${item.bottomWeight} kg',
+                                    '${item.manualBottomEdgeWeight} kg',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -476,7 +452,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                         ),
                         const SizedBox(height: 12),
                         TextField(
-                          controller: _weightControllers[item.itemId],
+                          controller: _weightControllers[item.id],
                           decoration: InputDecoration(
                             labelText: 'After Refill Weight (kg)',
                             hintText: 'Enter weight after refilling',
@@ -534,10 +510,10 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
     );
   }
 

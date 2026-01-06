@@ -4,6 +4,7 @@ import '../../models/gas_tank.dart';
 import '../../models/gas_order.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/gas_order_service.dart';
+import '../../utils/colors.dart';
 import 'qr_code_screen.dart';
 
 class ConfirmCylindersScreen extends StatefulWidget {
@@ -46,7 +47,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
       final tanksData = widget.cylindersData.map((item) {
         return {
           'gas_tank_id': (item['tank'] as GasTank).id,
-          'manual_bottom_edge_weight': item['weight'],
+          'before_refill_weight': item['weight'],
         };
       }).toList();
 
@@ -114,15 +115,11 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      gradient: AppColors.modernGradient,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -191,12 +188,12 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF6366F1).withOpacity(0.1),
+                                  color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
                                   Icons.receipt_long,
-                                  color: Color(0xFF6366F1),
+                                  color: AppColors.primary,
                                   size: 20,
                                 ),
                               ),
@@ -247,8 +244,8 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    const Color(0xFF6366F1).withOpacity(0.1),
-                                    const Color(0xFF8B5CF6).withOpacity(0.1),
+                                    AppColors.primary.withOpacity(0.1),
+                                    AppColors.indigo.withOpacity(0.1),
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -259,7 +256,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                 children: [
                                   const Icon(
                                     Icons.inventory_2_outlined,
-                                    color: Color(0xFF6366F1),
+                                    color: AppColors.primary,
                                     size: 32,
                                   ),
                                   const SizedBox(height: 10),
@@ -268,7 +265,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                     style: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF6366F1),
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -293,8 +290,8 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    const Color(0xFF10B981).withOpacity(0.1),
-                                    const Color(0xFF059669).withOpacity(0.1),
+                                    AppColors.primary.withOpacity(0.1),
+                                    AppColors.indigo.withOpacity(0.1),
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -305,7 +302,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                 children: [
                                   const Icon(
                                     Icons.scale_outlined,
-                                    color: Color(0xFF10B981),
+                                    color: AppColors.primary,
                                     size: 32,
                                   ),
                                   const SizedBox(height: 10),
@@ -314,7 +311,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                     style: const TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF10B981),
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -360,12 +357,12 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                                  color: AppColors.indigo.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
                                   Icons.checklist_rounded,
-                                  color: Color(0xFF8B5CF6),
+                                  color: AppColors.indigo,
                                   size: 20,
                                 ),
                               ),
@@ -401,90 +398,94 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                     width: 1,
                                   ),
                                 ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Number badge
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '${index + 1}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                    Row(
+                                      children: [
+                                        // Number badge
+                                        Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                            gradient: AppColors.modernGradient,
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Cylinder info
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            tank.trackingCode ?? tank.name,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.black87,
+                                          child: Center(
+                                            child: Text(
+                                              '${index + 1}',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 3),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        // Cylinder info
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                tank.trackingCode ?? tank.name,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black87,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                '${tank.cylinderType?.name ?? "N/A"} • ${tank.capacity.toStringAsFixed(0)} ${tank.unit}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // Before refill weight section
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.success.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.scale,
+                                            size: 16,
+                                            color: AppColors.success,
+                                          ),
+                                          const SizedBox(width: 8),
                                           Text(
-                                            '${tank.cylinderType?.name ?? "N/A"} • ${tank.capacity.toStringAsFixed(0)} ${tank.unit}',
+                                            'Before Refill Weight:',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Colors.grey[600],
+                                              color: Colors.grey[700],
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    // Weight badge
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF10B981),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.scale,
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(height: 2),
+                                          const SizedBox(width: 8),
                                           Text(
-                                            '${weight.toStringAsFixed(1)}',
+                                            '${weight.toStringAsFixed(1)} ${tank.unit}',
                                             style: const TextStyle(
-                                              fontSize: 15,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          Text(
-                                            tank.unit,
-                                            style: const TextStyle(
-                                              fontSize: 9,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.success,
                                             ),
                                           ),
                                         ],
@@ -528,15 +529,11 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                     width: double.infinity,
                     height: 56,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
+                      gradient: AppColors.successGradient,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF10B981).withOpacity(0.3),
+                          color: AppColors.success.withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -588,7 +585,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                     icon: const Icon(Icons.arrow_back, size: 18),
                     label: const Text('Go Back & Edit'),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF6366F1),
+                      foregroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/gas_order.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/gas_order_service.dart';
+import '../../utils/colors.dart';
 import 'qr_code_screen.dart';
 import 'edit_cylinders_screen.dart';
 
@@ -98,18 +99,32 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Pending Fill Requests'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 1,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadPendingOrders,
+      backgroundColor: AppColors.background,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.modernGradient,
           ),
-        ],
+          child: AppBar(
+            title: const Text(
+              'Pending Fill Requests',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: _loadPendingOrders,
+              ),
+            ],
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -155,13 +170,43 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _loadPendingOrders,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Refresh'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF000080),
-                              foregroundColor: Colors.white,
+                          Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.modernGradient,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _loadPendingOrders,
+                                borderRadius: BorderRadius.circular(12),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 24),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.refresh_rounded, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Refresh',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -169,22 +214,28 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                     )
                   : RefreshIndicator(
                       onRefresh: _loadPendingOrders,
-                      color: const Color(0xFF000080),
+                      color: AppColors.primary,
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _pendingOrders.length,
                         itemBuilder: (context, index) {
                           final order = _pendingOrders[index];
 
-                          return Card(
+                          return Container(
                             margin: const EdgeInsets.only(bottom: 16),
-                            color: Colors.white,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Padding(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(18),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -192,13 +243,33 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         Expanded(
-                                          child: Text(
-                                            order.requestCode,
-                                            style: const TextStyle(
-                                              color: Colors.black87,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  gradient: AppColors.modernGradient,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.receipt_long_rounded,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  order.requestCode,
+                                                  style: const TextStyle(
+                                                    color: AppColors.textPrimary,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    letterSpacing: 0.3,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                         Container(
@@ -207,11 +278,11 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                                             vertical: 6,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: _getStatusColor(order.status).withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(20),
+                                            color: _getStatusColor(order.status).withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(12),
                                             border: Border.all(
-                                              color: _getStatusColor(order.status),
-                                              width: 1,
+                                              color: _getStatusColor(order.status).withOpacity(0.5),
+                                              width: 1.5,
                                             ),
                                           ),
                                           child: Text(
@@ -219,7 +290,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                                             style: TextStyle(
                                               color: _getStatusColor(order.status),
                                               fontSize: 12,
-                                              fontWeight: FontWeight.bold,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
@@ -311,32 +382,59 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                                               border: Border.all(color: Colors.grey[300]!),
                                             ),
                                             child: Text(
-                                              '${item.tankName} (${item.cylinderType})',
+                                              '${item.trackingCode} (${item.cylinderType})',
                                               style: const TextStyle(
                                                 color: Colors.black87,
                                                 fontSize: 12,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           );
                                         }).toList(),
                                       ),
                                     ],
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 16),
                                     // Show Edit button for pending requests, and View QR if cylinders exist
                                     if (order.tanksCount == 0)
                                       // No cylinders - show only Edit button
-                                      SizedBox(
+                                      Container(
                                         width: double.infinity,
-                                        child: ElevatedButton.icon(
-                                          onPressed: () => _editRequest(order),
-                                          icon: const Icon(Icons.edit, size: 20),
-                                          label: const Text('Add Cylinders'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.orange,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(8),
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [Colors.orange, Color(0xFFE65100)],
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.orange.withOpacity(0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () => _editRequest(order),
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: const Center(
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 20),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    'Add Cylinders',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w600,
+                                                      letterSpacing: 0.3,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -346,33 +444,77 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                                       Row(
                                         children: [
                                           Expanded(
-                                            child: OutlinedButton.icon(
-                                              onPressed: () => _editRequest(order),
-                                              icon: const Icon(Icons.edit, size: 18),
-                                              label: const Text('Edit'),
-                                              style: OutlinedButton.styleFrom(
-                                                foregroundColor: const Color(0xFF000080),
-                                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                                side: const BorderSide(color: Color(0xFF000080), width: 2),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                            child: Container(
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                border: Border.all(color: AppColors.primary, width: 2),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  onTap: () => _editRequest(order),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: const Center(
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Icon(Icons.edit_rounded, color: AppColors.primary, size: 18),
+                                                        SizedBox(width: 6),
+                                                        Text(
+                                                          'Edit',
+                                                          style: TextStyle(
+                                                            color: AppColors.primary,
+                                                            fontSize: 14,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 10),
                                           Expanded(
                                             flex: 2,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () => _viewQRCode(order),
-                                              icon: const Icon(Icons.qr_code, size: 20),
-                                              label: const Text('View QR Code'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: const Color(0xFF000080),
-                                                foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                            child: Container(
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                gradient: AppColors.modernGradient,
+                                                borderRadius: BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.primary.withOpacity(0.3),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  onTap: () => _viewQRCode(order),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: const Center(
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 20),
+                                                        SizedBox(width: 8),
+                                                        Text(
+                                                          'View QR Code',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 14,
+                                                            fontWeight: FontWeight.w600,
+                                                            letterSpacing: 0.3,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ),

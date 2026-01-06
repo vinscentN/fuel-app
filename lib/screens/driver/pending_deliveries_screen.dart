@@ -301,10 +301,11 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
                                               border: Border.all(color: Colors.grey[300]!),
                                             ),
                                             child: Text(
-                                              '${item.tankName} (${item.cylinderType})',
+                                              '${item.trackingCode} (${item.cylinderType})',
                                               style: const TextStyle(
                                                 color: Colors.black87,
                                                 fontSize: 12,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           );

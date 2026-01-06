@@ -309,10 +309,11 @@ class _PendingOrdersForDeliveryScreenState
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(
-                                                  '${item.tankName} (${item.cylinderType})',
+                                                  '${item.trackingCode} (${item.cylinderType})',
                                                   style: const TextStyle(
                                                     color: Colors.black87,
                                                     fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                               ),

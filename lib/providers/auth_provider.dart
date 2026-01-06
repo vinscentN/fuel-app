@@ -391,4 +391,42 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setBool('device_active', true);
     notifyListeners();
   }
+
+  /// Reset operator code/password
+  Future<bool> resetPassword({
+    required String username,
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      print('[AuthProvider] Resetting operator code for: $username');
+
+      final response = await _authService.resetOperatorCode(
+        username: username,
+        oldOperatorCode: oldPassword,
+        newOperatorCode: newPassword,
+        newOperatorCodeConfirmation: confirmPassword,
+      );
+
+      if (response['success'] == true) {
+        print('[AuthProvider] ✅ Operator code reset successfully');
+        return true;
+      } else {
+        final errorMessage = response['message'] ?? 'Password reset failed';
+        print('[AuthProvider] ❌ Reset failed: $errorMessage');
+        _setError(errorMessage);
+        return false;
+      }
+    } catch (e) {
+      print('[AuthProvider] 🚨 Reset password error: $e');
+      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Password reset failed'));
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
 }

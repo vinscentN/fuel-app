@@ -81,11 +81,11 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    // Get service station name and remove "Poscloud" or "Poscloud" suffix if present
+
     String displayName = auth.serviceStationName ?? '';
-    displayName = displayName.replaceAll(RegExp(r'\s*Posclcoud\s+?\s*$', caseSensitive: false), '').trim();
+    displayName = displayName.replaceAll(RegExp(r'\s*Gasman\s+?\s*$', caseSensitive: false), '').trim();
     if (displayName.isEmpty) {
-      displayName = 'Poscloud';
+      displayName = 'Gasman';
     }
 
     return Scaffold(
@@ -97,89 +97,35 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Animated Logo with shadow
+                // Animated Logo - simple without card
                 ScaleTransition(
                   scale: _logoScale,
                   child: FadeTransition(
                     opacity: _logoFade,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.2),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'images/logo.png',
-                        width: 160,
-                        height: 160,
-                        fit: BoxFit.contain,
-                      ),
+                    child: Image.asset(
+                      'images/logo.png',
+                      width: 160,
+                      height: 160,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
                 const SizedBox(height: 40),
 
-                // Service Station name with background card
+                // Service Station name - clean text
                 FadeTransition(
                   opacity: _logoFade,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 32),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primary,
-                          AppColors.primary.withOpacity(0.8),
-                        ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      displayName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                        letterSpacing: 0.5,
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          displayName,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.8,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Point of Sale',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -190,23 +136,13 @@ class _SplashScreenState extends State<SplashScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 32.0),
                   child: Column(
                     children: [
-                      // Animated progress indicator with glow effect
+                      // Animated progress indicator - clean
                       FadeTransition(
                         opacity: _fade,
-                        child: Container(
+                        child: const SizedBox(
                           width: 40,
                           height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const CircularProgressIndicator(
+                          child: CircularProgressIndicator(
                             strokeWidth: 3.5,
                             color: AppColors.primary,
                             backgroundColor: Colors.transparent,

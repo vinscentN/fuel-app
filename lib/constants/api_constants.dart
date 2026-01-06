@@ -2,8 +2,9 @@ class ApiConstants {
   // For local testing with physical device, use your computer's local IP
   // Your current IP: 172.19.74.143
 
-  // static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
-  static const String baseUrl = "http://10.213.42.143:8000/api/pos";
+
+  static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
+  // static const String baseUrl = "http://10.107.91.143:8000/api/pos";
 
   // Auth Endpoints
   static const String mobileLogin = "$baseUrl/login";
@@ -25,6 +26,7 @@ class ApiConstants {
   static const String setPin = "$baseUrl/set-pin";
   // Attendant/operator code reset
   static const String attendantsResetCode = "$baseUrl/attendants-reset-code";
+  static const String resetOperatorCode = "$baseUrl/reset-operator-code";
   // Reports
   static const String posBatchCutoff = "$baseUrl/batch-cutoff";
   static const String posLastSale = "$baseUrl/last-sale"; // placeholder

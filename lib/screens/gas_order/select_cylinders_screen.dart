@@ -100,10 +100,11 @@ class _SelectCylindersScreenState extends State<SelectCylindersScreen> {
       final weight = double.tryParse(normalized);
 
       if (weightText.isEmpty) {
+        final tank = _tanks.firstWhere((t) => t.id == tankId);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Please enter bottom edge weight for ${_tanks.firstWhere((t) => t.id == tankId).name}',
+              'Please enter before refill weight for ${tank.trackingCode ?? tank.name}',
             ),
             backgroundColor: Colors.orange,
           ),
@@ -111,10 +112,11 @@ class _SelectCylindersScreenState extends State<SelectCylindersScreen> {
         return;
       }
       if (weight == null || weight <= 0) {
+        final tank = _tanks.firstWhere((t) => t.id == tankId);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Invalid weight for ${_tanks.firstWhere((t) => t.id == tankId).name}',
+              'Invalid weight for ${tank.trackingCode ?? tank.name}',
             ),
             backgroundColor: Colors.orange,
           ),
@@ -124,7 +126,7 @@ class _SelectCylindersScreenState extends State<SelectCylindersScreen> {
 
       tanksData.add({
         'gas_tank_id': tankId,
-        'manual_bottom_edge_weight': weight,
+        'before_refill_weight': weight,
       });
     }
 
@@ -296,7 +298,7 @@ class _SelectCylindersScreenState extends State<SelectCylindersScreen> {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  tank.name,
+                                                  tank.trackingCode ?? tank.name,
                                                   style: const TextStyle(
                                                     color: Colors.black87,
                                                     fontSize: 16,
@@ -330,7 +332,7 @@ class _SelectCylindersScreenState extends State<SelectCylindersScreen> {
                                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                           style: const TextStyle(color: Colors.black87),
                                           decoration: InputDecoration(
-                                            labelText: 'Bottom Edge Weight (${tank.unit})',
+                                            labelText: 'Before Refill Weight (${tank.unit})',
                                             labelStyle: const TextStyle(color: Colors.black54),
                                             hintText: '0.00',
                                             hintStyle: const TextStyle(color: Colors.black38),

@@ -138,4 +138,43 @@ class AuthService {
     );
     return response;
   }
+
+  // Reset operator code with username, old code, new code, and confirmation
+  Future<Map<String, dynamic>> resetOperatorCode({
+    required String username,
+    required String oldOperatorCode,
+    required String newOperatorCode,
+    required String newOperatorCodeConfirmation,
+  }) async {
+    final api = ApiClient();
+
+    print('🔵 ========== RESET OPERATOR CODE REQUEST ==========');
+    print('📍 URL: ${ApiConstants.resetOperatorCode}');
+    print('👤 Username: $username');
+    print('🔵 ==================================================');
+
+    try {
+      final response = await api.post(
+        ApiConstants.resetOperatorCode,
+        body: {
+          'username': username.trim(),
+          'old_operator_code': oldOperatorCode,
+          'new_operator_code': newOperatorCode,
+          'new_operator_code_confirmation': newOperatorCodeConfirmation,
+        },
+      );
+
+      print('🟢 ========== RESET OPERATOR CODE RESPONSE ==========');
+      print('✅ Success: ${response['success']}');
+      print('📝 Message: ${response['message']}');
+      print('🟢 ===================================================');
+
+      return response;
+    } catch (e) {
+      print('💥 ========== RESET OPERATOR CODE ERROR ==========');
+      print('❌ Error: $e');
+      print('💥 =================================================');
+      rethrow;
+    }
+  }
 }
