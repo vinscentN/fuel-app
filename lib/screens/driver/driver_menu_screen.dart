@@ -10,6 +10,7 @@ import 'site_pickup_scan_screen.dart';
 import 'site_selection_screen.dart';
 import 'pending_deliveries_screen.dart';
 import 'warehouse_purchases_screen.dart';
+import 'pending_fill_requests_screen.dart';
 
 class DriverMenuScreen extends StatelessWidget {
   const DriverMenuScreen({super.key});
@@ -106,6 +107,20 @@ class DriverMenuScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
+              _buildMenuTile(
+                icon: Icons.receipt_long_rounded,
+                title: 'PENDING FILL REQUESTS',
+                subtitle: 'View all pending refill requests',
+                color: const Color(0xFF0EA5E9),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PendingFillRequestsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               _buildMenuTile(
                 icon: Icons.qr_code_scanner,
                 title: 'SITE PICK UP',

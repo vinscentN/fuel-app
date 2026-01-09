@@ -107,14 +107,20 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
     if (!mounted) return;
 
+    // Check if user navigated back without confirming (pressed back button)
+    // In that case, customerResult will be null and we should NOT proceed
+    // This prevents accidental transaction processing
+    if (customerResult == null) {
+      // User clicked back or cancelled, do not proceed to transaction processing
+      return;
+    }
+
     // Extract customer data from result
     int? customerId;
     CustomerData? customerData;
 
-    if (customerResult != null) {
-      customerId = customerResult['customerId'] as int?;
-      customerData = customerResult['customerData'] as CustomerData?;
-    }
+    customerId = customerResult['customerId'] as int?;
+    customerData = customerResult['customerData'] as CustomerData?;
 
     // Navigate to transaction processing screen
     Navigator.of(context).push(

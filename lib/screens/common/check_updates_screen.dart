@@ -61,6 +61,21 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
   Future<void> _downloadAndInstall() async {
     if (_updateInfo == null) return;
 
+    // Validate download URL before attempting download
+    final downloadUrl = _updateInfo!['downloadUrl'] as String? ?? '';
+    if (downloadUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Download URL is missing. Please contact support or check for updates again.',
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isDownloading = true;
       _downloadProgress = 0.0;
@@ -68,7 +83,7 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
 
     final updateService = UpdateService();
     final success = await updateService.downloadAndInstallApk(
-      _updateInfo!['downloadUrl'],
+      downloadUrl,
       (progress) {
         if (mounted) {
           setState(() {
@@ -95,8 +110,11 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Failed to download update. Please try again.'),
+          content: Text(
+            'Failed to download update. Check your internet connection and try again. Check logs for details.',
+          ),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
         ),
       );
     }

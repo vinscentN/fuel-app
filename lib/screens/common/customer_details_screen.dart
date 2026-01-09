@@ -149,8 +149,24 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
     if (_isProcessing) return;
 
     setState(() => _isProcessing = true);
-    // Return null to indicate no customer details
-    Navigator.of(context).pop(null);
+    // Return empty data to proceed to transaction without customer details
+    Navigator.of(context).pop({
+      'customerId': null,
+      'customerData': null,
+    });
+  }
+
+  void _cancelTransaction() {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+    // Pop back to amount input screen (2 screens back)
+    // This will take user from: CustomerDetails -> PaymentMethod -> AmountInput
+    Navigator.of(context).popUntil((route) {
+      // Check if we've reached the amount input screen or if we've gone back enough
+      return route.settings.name == '/amount_input' ||
+             !Navigator.of(context).canPop();
+    });
   }
 
   void _confirmCustomerDetails() {
@@ -364,10 +380,10 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                   child: OutlinedButton(
                     onPressed: _isProcessing ? null : _skipCustomerDetails,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[700],
-                      side: BorderSide(color: Colors.grey[300]!, width: 1.5),
-                      backgroundColor: Colors.grey[50],
-                      disabledForegroundColor: Colors.grey[400],
+                      foregroundColor: Colors.blue[700],
+                      side: BorderSide(color: Colors.blue[300]!, width: 1.5),
+                      backgroundColor: Colors.blue[50],
+                      disabledForegroundColor: Colors.blue[400],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -378,7 +394,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                         Icon(
                           Icons.person_off_outlined,
                           size: 20,
-                          color: _isProcessing ? Colors.grey[400] : Colors.grey[700],
+                          color: _isProcessing ? Colors.blue[400] : Colors.blue[700],
                         ),
                         const SizedBox(width: 10),
                         Text(
@@ -386,7 +402,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: _isProcessing ? Colors.grey[400] : Colors.grey[700],
+                            color: _isProcessing ? Colors.blue[400] : Colors.blue[700],
                           ),
                         ),
                       ],
@@ -714,6 +730,45 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                   ),
                 ),
               ],
+
+              const SizedBox(height: 16),
+
+              // Cancel button - takes user back to amount input screen
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: _isProcessing ? null : _cancelTransaction,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red[700],
+                    side: BorderSide(color: Colors.red[300]!, width: 1.5),
+                    backgroundColor: Colors.red[50],
+                    disabledForegroundColor: Colors.grey[400],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.cancel_outlined,
+                        size: 20,
+                        color: _isProcessing ? Colors.grey[400] : Colors.red[700],
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Cancel Transaction',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: _isProcessing ? Colors.grey[400] : Colors.red[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 16),
             ],
