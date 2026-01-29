@@ -30,73 +30,47 @@ class _SitePickupScanScreenState extends State<SitePickupScanScreen> {
 
   Future<void> _checkCameraPermission() async {
     try {
-      // Add timeout to prevent hanging
-      final status = await Permission.camera.status.timeout(
-        const Duration(seconds: 3),
-        onTimeout: () {
-          // On timeout, assume permission is granted (for older Android)
-          debugPrint('Permission check timeout - assuming granted');
-          return PermissionStatus.granted;
-        },
-      );
-
+      final status = await Permission.camera.status;
       debugPrint('Camera permission status: $status');
 
       if (status.isGranted) {
-        if (mounted) {
-          setState(() {
-            _hasPermission = true;
-            _isCheckingPermission = false;
-          });
-          _initializeCamera();
-        }
-      } else if (status.isDenied) {
-        final result = await Permission.camera.request().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            debugPrint('Permission request timeout - assuming granted');
-            return PermissionStatus.granted;
-          },
-        );
-
-        if (mounted) {
-          setState(() {
-            _hasPermission = result.isGranted;
-            _isCheckingPermission = false;
-          });
-          if (result.isGranted) {
-            _initializeCamera();
-          }
-        }
-      } else if (status.isPermanentlyDenied) {
-        if (mounted) {
-          setState(() {
-            _hasPermission = false;
-            _isCheckingPermission = false;
-          });
-          _showPermissionDeniedDialog();
-        }
-      } else {
-        // Fallback for older Android versions or unknown states
-        debugPrint('Unknown permission state: $status - initializing camera');
-        if (mounted) {
-          setState(() {
-            _hasPermission = true;
-            _isCheckingPermission = false;
-          });
-          _initializeCamera();
-        }
-      }
-    } catch (e) {
-      // If permission check fails (e.g., on older Android), try to initialize anyway
-      debugPrint('Permission check failed: $e');
-      if (mounted) {
+        if (!mounted) return;
         setState(() {
           _hasPermission = true;
           _isCheckingPermission = false;
         });
         _initializeCamera();
+        return;
       }
+
+      if (status.isPermanentlyDenied || status.isRestricted) {
+        if (!mounted) return;
+        setState(() {
+          _hasPermission = false;
+          _isCheckingPermission = false;
+        });
+        _showPermissionDeniedDialog();
+        return;
+      }
+
+      final result = await Permission.camera.request();
+      if (!mounted) return;
+      setState(() {
+        _hasPermission = result.isGranted;
+        _isCheckingPermission = false;
+      });
+      if (result.isGranted) {
+        _initializeCamera();
+      } else if (result.isPermanentlyDenied || result.isRestricted) {
+        _showPermissionDeniedDialog();
+      }
+    } catch (e) {
+      debugPrint('Permission check failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _hasPermission = false;
+        _isCheckingPermission = false;
+      });
     }
   }
 
@@ -198,8 +172,13 @@ class _SitePickupScanScreenState extends State<SitePickupScanScreen> {
               },
             ),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(24.0),
+          body: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              24 + MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

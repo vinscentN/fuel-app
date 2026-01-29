@@ -11,6 +11,7 @@ import 'site_selection_screen.dart';
 import 'pending_deliveries_screen.dart';
 import 'warehouse_purchases_screen.dart';
 import 'pending_fill_requests_screen.dart';
+import 'bobtail_orders_screen.dart';
 
 class DriverMenuScreen extends StatelessWidget {
   const DriverMenuScreen({super.key});
@@ -109,7 +110,7 @@ class DriverMenuScreen extends StatelessWidget {
             children: [
               _buildMenuTile(
                 icon: Icons.receipt_long_rounded,
-                title: 'PENDING FILL REQUESTS',
+                title: 'NEW REFILL ORDERS',
                 subtitle: 'View all pending refill requests',
                 color: const Color(0xFF0EA5E9),
                 onTap: () {
@@ -123,8 +124,8 @@ class DriverMenuScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _buildMenuTile(
                 icon: Icons.qr_code_scanner,
-                title: 'SITE PICK UP',
-                subtitle: 'Picking Cylinders for Refilling',
+                title: 'CYLINDER COLLECTION',
+                subtitle: 'Scan to pick cylinders for collection',
                 color: const Color(0xFF6366F1),
                 onTap: () {
                   Navigator.of(context).push(
@@ -150,6 +151,20 @@ class DriverMenuScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _buildMenuTile(
+                icon: Icons.local_shipping_rounded,
+                title: 'BOBTAIL',
+                subtitle: 'View assigned bobtail orders',
+                color: const Color(0xFF14B8A6),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const BobtailOrdersScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuTile(
                 icon: Icons.add_box_outlined,
                 title: 'CREATE DELIVERY',
                 subtitle: 'Create delivery for refilled cylinders',
@@ -165,7 +180,7 @@ class DriverMenuScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _buildMenuTile(
                 icon: Icons.local_shipping_outlined,
-                title: 'PENDING DELIVERIES',
+                title: 'NEW DELIVERIES',
                 subtitle: 'View and manage pending deliveries',
                 color: const Color(0xFF10B981),
                 onTap: () {
@@ -262,7 +277,7 @@ class DriverMenuScreen extends StatelessWidget {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           letterSpacing: 0.3,

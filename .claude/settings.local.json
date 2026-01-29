@@ -3,7 +3,9 @@
     "allow": [
       "Bash(./gradlew assembleRelease:*)",
       "Bash(./gradlew clean:*)",
-      "Bash(flutter build:*)"
+      "Bash(flutter build:*)",
+      "Bash(dir:*)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

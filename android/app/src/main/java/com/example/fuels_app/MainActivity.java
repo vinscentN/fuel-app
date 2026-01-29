@@ -1162,73 +1162,20 @@ public class MainActivity extends FlutterActivity {
         // Print logo
         Bitmap logoBitmap = loadScaledLogo();
         printCenteredLogo(logoBitmap);
-        PrinterApi.PrnStr_Api("\n");
-
-        // Header
-        PrinterApi.PrnFontSet_Api(28, 28, 0);
-        PrinterApi.PrnStr_Api(centerText("=== " + title + " ==="));
-        PrinterApi.PrnFontSet_Api(24, 24, 0);
-        PrinterApi.PrnStr_Api("\n");
-
-        // Station details
-        if (stationName != null && !stationName.isEmpty()) {
-            PrinterApi.PrnStr_Api(centerText(stationName));
-        }
-        if (address != null && !address.isEmpty()) {
-            PrinterApi.PrnStr_Api(centerText(address));
-        }
-        if (phone != null && !phone.isEmpty()) {
-            PrinterApi.PrnStr_Api(centerText("Tel: " + phone));
-        }
-        PrinterApi.PrnStr_Api("--------------------------------");
-
-        // Date and Time
-        PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
-        PrinterApi.PrnStr_Api("--------------------------------");
 
         // Generate and print QR code as image
         try {
             Bitmap qrBitmap = generateQrCode(qrData);
-            PrinterApi.PrnStr_Api("\n");
             PrinterApi.PrnLogo_Api(qrBitmap);
-            PrinterApi.PrnStr_Api("\n");
         } catch (WriterException e) {
             Log.e(TAG, "Failed to generate QR code", e);
             // Fallback to text if QR generation fails
-            PrinterApi.PrnStr_Api("\n");
             PrinterApi.PrnStr_Api(centerText("QR CODE:"));
             PrinterApi.PrnStr_Api(centerText(qrData));
-            PrinterApi.PrnStr_Api("\n");
         }
-        PrinterApi.PrnStr_Api("--------------------------------");
-
-        // Request details
-        PrinterApi.PrnStr_Api("Request Code: " + requestCode);
-        PrinterApi.PrnStr_Api("Status: " + status);
-        PrinterApi.PrnStr_Api("Description: " + description);
-        PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
-        PrinterApi.PrnStr_Api("Created By: " + createdBy);
-        PrinterApi.PrnStr_Api("--------------------------------");
-//
-//        // Cylinder details
-//        if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
-//            PrinterApi.PrnStr_Api("CYLINDER DETAILS:");
-//            String[] lines = cylinderDetails.split("\n");
-//            for (String line : lines) {
-//                if (line != null && !line.trim().isEmpty()) {
-//                    PrinterApi.PrnStr_Api("  " + line.trim());
-//                }
-//            }
-//            PrinterApi.PrnStr_Api("--------------------------------");
-//        }
-
-        // Footer
-        PrinterApi.PrnStr_Api("\n");
-        PrinterApi.PrnStr_Api(centerText("Scan QR code at depot"));
-        PrinterApi.PrnStr_Api(centerText("to accept cylinders"));
-        PrinterApi.PrnStr_Api("\n");
-        PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
-        PrinterApi.PrnStr_Api("\n\n\n");
+        PrinterApi.PrnFontSet_Api(28, 28, 0);
+        PrinterApi.PrnStr_Api(requestCode);
+        PrinterApi.PrnStr_Api("\n\n\n\n");
         PrinterApi.PrnStart_Api();
     }
 
@@ -1353,16 +1300,23 @@ public class MainActivity extends FlutterActivity {
                 String description = safeStr(args.get("description"));
                 String siteName = safeStr(args.get("siteName"));
                 String siteCode = safeStr(args.get("siteCode"));
+                String copyType = safeStr(args.get("copyType"));
 
-                // Print driver copy
-                printDeliveryReceipt("DRIVER COPY", requestCode, deliveryCode, invoiceNumber,
-                                    stationName, address, phone, date, time, driverName,
-                                    cylinderCount, cylinderDetails, description, siteName, siteCode);
+                if (copyType != null && !copyType.isEmpty()) {
+                    printDeliveryReceipt(copyType, requestCode, deliveryCode, invoiceNumber,
+                                      stationName, address, phone, date, time, driverName,
+                                      cylinderCount, cylinderDetails, description, siteName, siteCode);
+                } else {
+                    // Print driver copy
+                    printDeliveryReceipt("DRIVER COPY", requestCode, deliveryCode, invoiceNumber,
+                                      stationName, address, phone, date, time, driverName,
+                                      cylinderCount, cylinderDetails, description, siteName, siteCode);
 
-                // Print attendant copy
-                printDeliveryReceipt("ATTENDANT COPY", requestCode, deliveryCode, invoiceNumber,
-                                    stationName, address, phone, date, time, driverName,
-                                    cylinderCount, cylinderDetails, description, siteName, siteCode);
+                    // Print attendant copy
+                    printDeliveryReceipt("ATTENDANT COPY", requestCode, deliveryCode, invoiceNumber,
+                                      stationName, address, phone, date, time, driverName,
+                                      cylinderCount, cylinderDetails, description, siteName, siteCode);
+                }
 
                 runOnUiThread(() -> result.success("Delivery receipts printed"));
             } catch (Exception e) {

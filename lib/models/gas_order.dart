@@ -106,15 +106,40 @@ class GasOrderItem {
   });
 
   factory GasOrderItem.fromJson(Map<String, dynamic> json) {
+    int safeParseInt(dynamic value, int defaultValue) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      try {
+        return int.parse(value.toString());
+      } catch (e) {
+        return defaultValue;
+      }
+    }
+
+    final gasTankJson = json['gas_tank'] ?? json['cylinder'];
+    final fallbackGasTankId = gasTankJson is Map
+        ? safeParseInt(gasTankJson['id'], 0)
+        : 0;
+    final parsedGasTankId = safeParseInt(json['gas_tank_id'], 0);
+    final parsedCylinderId = safeParseInt(json['cylinder_id'], 0);
+    final parsedTankId = safeParseInt(json['tank_id'], 0);
+    final resolvedGasTankId = parsedGasTankId != 0
+        ? parsedGasTankId
+        : parsedCylinderId != 0
+            ? parsedCylinderId
+            : parsedTankId != 0
+                ? parsedTankId
+                : fallbackGasTankId;
+
     return GasOrderItem(
       id: json['id'] ?? 0,
       gasOrderId: json['gas_order_id'] ?? 0,
-      gasTankId: json['gas_tank_id'] ?? 0,
+      gasTankId: resolvedGasTankId,
       manualBottomEdgeWeight: json['manual_bottom_edge_weight'] ?? '0',
       calculatedBottomEdgeWeight: json['calculated_bottom_edge_weight'] ?? '0',
       beforeRefillWeight: json['before_refill_weight'] ?? '0',
       afterRefillWeight: json['after_refill_weight'] ?? '0',
-      gasTank: GasTank.fromJson(json['gas_tank'] ?? {}),
+      gasTank: GasTank.fromJson(gasTankJson ?? {}),
     );
   }
 
@@ -122,7 +147,7 @@ class GasOrderItem {
     return {
       'id': id,
       'gas_order_id': gasOrderId,
-      'gas_tank_id': gasTankId,
+      'cylinder_id': gasTankId,
       'manual_bottom_edge_weight': manualBottomEdgeWeight,
       'calculated_bottom_edge_weight': calculatedBottomEdgeWeight,
       'before_refill_weight': beforeRefillWeight,
@@ -135,6 +160,7 @@ class GasOrderItem {
 class PendingGasOrder {
   final int id;
   final String requestCode;
+  final String? deliveryCode;
   final String status;
   final String description;
   final String createdBy;
@@ -146,6 +172,7 @@ class PendingGasOrder {
   PendingGasOrder({
     required this.id,
     required this.requestCode,
+    this.deliveryCode,
     required this.status,
     required this.description,
     required this.createdBy,
@@ -159,6 +186,7 @@ class PendingGasOrder {
     return PendingGasOrder(
       id: json['id'] ?? 0,
       requestCode: json['request_code'] ?? '',
+      deliveryCode: json['delivery_code'],
       status: json['status'] ?? '',
       description: json['description'] ?? '',
       createdBy: json['created_by'] ?? '',

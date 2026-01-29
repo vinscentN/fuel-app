@@ -1,4 +1,5 @@
 import '../constants/api_constants.dart';
+import '../models/driver_order.dart';
 import '../models/supplier.dart';
 import '../models/warehouse_purchase.dart';
 import 'api_client.dart';
@@ -68,6 +69,67 @@ class WarehouseService {
       };
     } catch (e) {
       print('[WarehouseService] Error fetching warehouse purchases: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches driver orders for fulfillment
+  Future<Map<String, dynamic>> getDriverOrders({
+    required int driverId,
+    required String token,
+  }) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiConstants.baseUrl}/driver-orders/$driverId',
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> data = response['data'] as List<dynamic>;
+        final List<DriverOrder> orders =
+            data.map((json) => DriverOrder.fromJson(json)).toList();
+
+        return {
+          'success': true,
+          'orders': orders,
+          'driver': response['driver'],
+        };
+      }
+
+      return {
+        'success': false,
+        'orders': <DriverOrder>[],
+        'driver': response['driver'],
+      };
+    } catch (e) {
+      print('[WarehouseService] Error fetching driver orders: $e');
+      rethrow;
+    }
+  }
+
+  /// Records a purchase from a driver order
+  Future<Map<String, dynamic>> recordPurchaseFromOrder({
+    required int orderId,
+    required double quantity,
+    required String invoiceNumber,
+    required String token,
+  }) async {
+    try {
+      final payload = {
+        'order_id': orderId,
+        'quantity': quantity,
+        'invoice_number': invoiceNumber,
+      };
+
+      final response = await _apiClient.post(
+        '${ApiConstants.baseUrl}/warehouse/purchases/from-order',
+        body: payload,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      return response;
+    } catch (e) {
+      print('[WarehouseService] Error recording purchase from order: $e');
       rethrow;
     }
   }

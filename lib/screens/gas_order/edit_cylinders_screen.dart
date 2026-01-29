@@ -370,8 +370,58 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                 )
                               : ListView.builder(
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  itemCount: _filteredTanks.length,
+                                  itemCount: _filteredTanks.length + 1,
                                   itemBuilder: (context, index) {
+                                    if (index == _filteredTanks.length) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8, bottom: 24),
+                                        child: Container(
+                                          width: double.infinity,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            gradient: AppColors.modernGradient,
+                                            borderRadius: BorderRadius.circular(16),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.primary.withOpacity(0.3),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: _navigateToConfirmation,
+                                              borderRadius: BorderRadius.circular(16),
+                                              child: const Center(
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      'Continue',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 17,
+                                                        fontWeight: FontWeight.w600,
+                                                        letterSpacing: 0.5,
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Icon(
+                                                      Icons.arrow_forward_rounded,
+                                                      color: Colors.white,
+                                                      size: 22,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+
                                     final tank = _filteredTanks[index];
                                     final isSelected = _selectedTanks[tank.id] ?? false;
 
@@ -500,7 +550,7 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                                       fontWeight: FontWeight.w600,
                                                     ),
                                                     decoration: InputDecoration(
-                                                      hintText: 'Before refill weight',
+                                                      hintText: 'Cylinder Weight',
                                                       hintStyle: TextStyle(
                                                         color: Colors.grey[400],
                                                         fontWeight: FontWeight.normal,
@@ -536,66 +586,6 @@ class _EditCylindersScreenState extends State<EditCylindersScreen> {
                                 ),
                         ),
 
-                        // Submit button - Modern gradient design
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, -4),
-                              ),
-                            ],
-                          ),
-                          child: SafeArea(
-                            child: Container(
-                              width: double.infinity,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: AppColors.modernGradient,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _navigateToConfirmation,
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: const Center(
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Continue',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Icon(
-                                          Icons.arrow_forward_rounded,
-                                          color: Colors.white,
-                                          size: 22,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
     );

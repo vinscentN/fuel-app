@@ -101,6 +101,26 @@ class GasOrderService {
     }
   }
 
+  /// Fetches pending gas orders for drivers (no site id in endpoint)
+  Future<List<PendingGasOrder>> getPendingOrdersForDriver(String token) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiConstants.baseUrl}/gas-orders/pending',
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> data = response['data'] as List<dynamic>;
+        return data.map((json) => PendingGasOrder.fromJson(json)).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('[GasOrderService] Error fetching pending orders (driver): $e');
+      rethrow;
+    }
+  }
+
   /// Fetches picked-up gas orders for a specific site (for delivery creation)
   Future<List<PendingGasOrder>> getPickedUpOrders(int siteId, String token) async {
     try {

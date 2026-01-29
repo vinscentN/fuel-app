@@ -58,6 +58,24 @@ class ApiClient {
     return _processResponse(response);
   }
 
+  Future<Map<String, dynamic>> patch(
+    String url, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    print('[API] PATCH: $url');
+    if (body != null) print('[API] Body: ${jsonEncode(body)}');
+
+    final response = await http.patch(
+      Uri.parse(url),
+      headers: {...defaultHeaders, ...?headers},
+      body: jsonEncode(body ?? {}),
+    );
+
+    _logResponse(response);
+    return _processResponse(response);
+  }
+
   void _logResponse(http.Response response) {
     print('[API] Response [${response.statusCode}]: ${response.body}');
   }
@@ -100,4 +118,3 @@ class ApiClient {
     }
   }
 }
-

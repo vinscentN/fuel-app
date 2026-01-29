@@ -25,13 +25,6 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
   final GasOrderService _gasOrderService = GasOrderService();
   bool _isSubmitting = false;
 
-  double get _totalWeight {
-    return widget.cylindersData.fold(
-      0.0,
-      (sum, item) => sum + (item['weight'] as double),
-    );
-  }
-
   Future<void> _submitCylinders() async {
     setState(() => _isSubmitting = true);
 
@@ -46,7 +39,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
       // Prepare tanks data for API
       final tanksData = widget.cylindersData.map((item) {
         return {
-          'gas_tank_id': (item['tank'] as GasTank).id,
+          'cylinder_id': (item['tank'] as GasTank).id,
           'before_refill_weight': item['weight'],
         };
       }).toList();
@@ -102,68 +95,11 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Modern Header
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.modernGradient,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check_circle_outline,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Review Submission',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Verify details before submitting',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                   // Request Details Card - Modern Design
                   Container(
                     width: double.infinity,
@@ -214,119 +150,6 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                           _buildInfoRow('Description', widget.order.description),
                           const SizedBox(height: 14),
                           _buildInfoRow('Station', widget.order.site.name),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Summary Stats - Modern Design
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppColors.primary.withOpacity(0.1),
-                                    AppColors.indigo.withOpacity(0.1),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                children: [
-                                  const Icon(
-                                    Icons.inventory_2_outlined,
-                                    color: AppColors.primary,
-                                    size: 32,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    '${widget.cylindersData.length}',
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.cylindersData.length == 1
-                                        ? 'Cylinder'
-                                        : 'Cylinders',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppColors.primary.withOpacity(0.1),
-                                    AppColors.indigo.withOpacity(0.1),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                children: [
-                                  const Icon(
-                                    Icons.scale_outlined,
-                                    color: AppColors.primary,
-                                    size: 32,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    _totalWeight.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Total KG',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -471,21 +294,30 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                             color: AppColors.success,
                                           ),
                                           const SizedBox(width: 8),
-                                          Text(
-                                            'Before Refill Weight:',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[700],
-                                              fontWeight: FontWeight.w500,
+                                          Expanded(
+                                            child: Text(
+                                              'Recorded Weight:',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[700],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                           const SizedBox(width: 8),
-                                          Text(
-                                            '${weight.toStringAsFixed(1)} ${tank.unit}',
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.success,
+                                          Flexible(
+                                            child: Text(
+                                              '${weight.toStringAsFixed(1)} ${tank.unit}',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.success,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.right,
                                             ),
                                           ),
                                         ],
@@ -501,99 +333,74 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+            const SizedBox(height: 24),
+            // Submit Button - Gradient
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: AppColors.successGradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.success.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
-            ),
-          ),
-
-          // Bottom buttons - Modern Design
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Submit Button - Gradient
-                  Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.successGradient,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.success.withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _isSubmitting ? null : _submitCylinders,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Center(
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'Confirm & Submit',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ],
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _isSubmitting ? null : _submitCylinders,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Center(
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Confirm & Submit',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
                                 ),
-                        ),
-                      ),
-                    ),
+                              ),
+                            ],
+                          ),
                   ),
-                  const SizedBox(height: 12),
-                  // Back Button - Text Only
-                  TextButton.icon(
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back, size: 18),
-                    label: const Text('Go Back & Edit'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, size: 18),
+              label: const Text('Go Back & Edit'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

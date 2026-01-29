@@ -44,12 +44,11 @@ class _PendingFillRequestsScreenState
         throw Exception('Not authenticated');
       }
 
-      if (user == null || user.serviceStationId == 0) {
-        throw Exception('Service station not found');
+      if (user == null) {
+        throw Exception('User not found');
       }
 
-      final orders = await _gasOrderService.getPendingOrders(
-          user.serviceStationId, token);
+      final orders = await _gasOrderService.getPendingOrdersForDriver(token);
 
       setState(() {
         _pendingOrders = orders;
@@ -238,19 +237,7 @@ class _PendingFillRequestsScreenState
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildSiteStatChip(
-                      icon: Icons.receipt_long_rounded,
-                      label: '${orders.length} Request${orders.length != 1 ? 's' : ''}',
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSiteStatChip(
-                      icon: Icons.propane_tank,
-                      label: '$totalCylinders Cylinder${totalCylinders != 1 ? 's' : ''}',
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -312,55 +299,41 @@ class _PendingFillRequestsScreenState
           children: [
             Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.receipt_rounded,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.receipt_rounded,
-                          color: AppColors.primary,
-                          size: 16,
+                      Text(
+                        order.site.name,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          order.requestCode,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        order.requestCode,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(order.status).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: _getStatusColor(order.status).withOpacity(0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Text(
-                    order.status,
-                    style: TextStyle(
-                      color: _getStatusColor(order.status),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
                   ),
                 ),
               ],
@@ -394,9 +367,15 @@ class _PendingFillRequestsScreenState
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(
-                  _formatDateTime(order.createdAt),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _formatDateTime(order.createdAt),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    textAlign: TextAlign.right,
+                  ),
                 ),
               ],
             ),
@@ -495,60 +474,43 @@ class _PendingFillRequestsScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.modernGradient,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.receipt_long_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  gradient: AppColors.modernGradient,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.receipt_long_rounded,
-                                  color: Colors.white,
-                                  size: 20,
+                              Text(
+                                site.name,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  order.requestCode,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.3,
-                                  ),
+                              const SizedBox(height: 4),
+                              Text(
+                                order.requestCode,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                            _getStatusColor(order.status).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color:
-                              _getStatusColor(order.status).withOpacity(0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Text(
-                            order.status,
-                            style: TextStyle(
-                              color: _getStatusColor(order.status),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
                           ),
                         ),
                       ],
@@ -635,13 +597,20 @@ class _PendingFillRequestsScreenState
                               color: Colors.grey[600],
                               fontSize: 13,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Text(
-                          _formatDateTime(order.createdAt),
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 13,
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _formatDateTime(order.createdAt),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            textAlign: TextAlign.right,
                           ),
                         ),
                       ],
@@ -739,7 +708,7 @@ class _PendingFillRequestsScreenState
           ),
           child: AppBar(
             title: const Text(
-              'Pending Fill Requests',
+              'New Refill Orders',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,

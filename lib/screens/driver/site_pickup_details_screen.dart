@@ -113,6 +113,15 @@ class _SitePickupDetailsScreenState extends State<SitePickupDetailsScreen> {
     }
   }
 
+  double _parseDouble(String? value) {
+    if (value == null) return 0;
+    return double.tryParse(value) ?? 0;
+  }
+
+  String _formatWeight(double value, String unit) {
+    return '${value.toStringAsFixed(1)} $unit';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -265,12 +274,26 @@ class _SitePickupDetailsScreenState extends State<SitePickupDetailsScreen> {
                         item.gasTank.cylinderType?.name ?? 'N/A',
                       ),
                       _buildCylinderDetailRow(
+                        'Tracking Code',
+                        item.gasTank.trackingCode ?? item.gasTank.name,
+                      ),
+                      _buildCylinderDetailRow(
                         'Capacity',
-                        '${item.gasTank.capacity.toStringAsFixed(0)} ${item.gasTank.unit}',
+                        '${item.gasTank.capacity.toStringAsFixed(1)} ${item.gasTank.unit}',
+                      ),
+                      _buildCylinderDetailRow(
+                        'Current Weight',
+                        _formatWeight(
+                          _parseDouble(item.beforeRefillWeight),
+                          item.gasTank.unit,
+                        ),
                       ),
                       _buildCylinderDetailRow(
                         'Bottom Edge Weight',
-                        '${item.manualBottomEdgeWeight} ${item.gasTank.unit}',
+                        _formatWeight(
+                          _parseDouble(item.beforeRefillWeight) - item.gasTank.capacity,
+                          item.gasTank.unit,
+                        ),
                         highlight: true,
                       ),
                       if (item.gasTank.product?.productType?.name != null)

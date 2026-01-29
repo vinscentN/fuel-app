@@ -32,6 +32,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["applicationName"] = "com.example.fuels_app.CameraXApp"
     }
 
     buildTypes {
@@ -74,4 +75,6 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
     implementation(files("libs\\AppSdkAidl.jar"))
     implementation(files("libs\\vanstoneSdkClient-noemv.jar"))
+    implementation("androidx.camera:camera-core:1.3.0")
+    implementation("androidx.camera:camera-camera2:1.3.0")
 }

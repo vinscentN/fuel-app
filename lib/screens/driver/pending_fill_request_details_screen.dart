@@ -111,7 +111,65 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
     );
   }
 
-  Widget _buildSectionCard({required String title, required List<Widget> children}) {
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required List<Widget> children,
+    IconData? icon,
+    String? badgeText,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -119,17 +177,58 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 16),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (badgeText != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           ...children,
@@ -150,12 +249,21 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey[200]!,
-          width: 1,
+        border: Border(
+          left: BorderSide(color: AppColors.primary, width: 4),
+          top: BorderSide(color: Colors.grey[200]!, width: 1),
+          right: BorderSide(color: Colors.grey[200]!, width: 1),
+          bottom: BorderSide(color: Colors.grey[200]!, width: 1),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,7 +307,7 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '$cylinderType • $capacity',
+                      '$cylinderType - $capacity',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -281,25 +389,26 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          gradient: AppColors.modernGradient,
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: AppColors.primary.withOpacity(0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
                             ),
                           ],
                         ),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                gradient: AppColors.modernGradient,
+                                color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -316,51 +425,21 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
                                   Text(
                                     _order!.site.name,
                                     style: const TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 17,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                      color: Colors.white,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 6),
                                   Text(
-                                    'Pick up cylinders at this site.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[700],
+                                    _order!.requestCode,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Request: ${_order!.requestCode}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
                                 ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(_order!.status).withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _getStatusColor(_order!.status).withOpacity(0.5),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                _order!.status,
-                                style: TextStyle(
-                                  color: _getStatusColor(_order!.status),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
                               ),
                             ),
                           ],
@@ -369,44 +448,79 @@ class _PendingFillRequestDetailsScreenState extends State<PendingFillRequestDeta
                       const SizedBox(height: 16),
                       _buildSectionCard(
                         title: 'Site Information',
+                        icon: Icons.place_rounded,
                         children: [
-                          _buildInfoRow('Site', _order!.site.name),
+                          _buildInfoTile(
+                            icon: Icons.storefront,
+                            label: 'Site',
+                            value: _order!.site.name,
+                          ),
                           if (_order!.site.stationCode != null && _order!.site.stationCode!.isNotEmpty)
-                            _buildInfoRow('Site code', _order!.site.stationCode!),
+                            _buildInfoTile(
+                              icon: Icons.confirmation_number_outlined,
+                              label: 'Site code',
+                              value: _order!.site.stationCode!,
+                            ),
                           if (_order!.site.address != null && _order!.site.address!.isNotEmpty)
-                            _buildInfoRow('Address', _order!.site.address!),
+                            _buildInfoTile(
+                              icon: Icons.location_on_outlined,
+                              label: 'Address',
+                              value: _order!.site.address!,
+                            ),
                           if (_order!.site.city != null && _order!.site.city!.isNotEmpty)
-                            _buildInfoRow('City', _order!.site.city!),
+                            _buildInfoTile(
+                              icon: Icons.location_city_outlined,
+                              label: 'City',
+                              value: _order!.site.city!,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),
                       _buildSectionCard(
                         title: 'Request Information',
+                        icon: Icons.receipt_long_rounded,
                         children: [
-                          _buildInfoRow('Created by', _order!.requestCreatedBy),
-                          _buildInfoRow('Created at', _formatDate(_order!.requestCreatedAt)),
+                          _buildInfoTile(
+                            icon: Icons.person_outline,
+                            label: 'Created by',
+                            value: _order!.requestCreatedBy,
+                          ),
+                          _buildInfoTile(
+                            icon: Icons.schedule,
+                            label: 'Created at',
+                            value: _formatDate(_order!.requestCreatedAt),
+                          ),
                           if (_order!.deliveryCode != null && _order!.deliveryCode!.isNotEmpty)
-                            _buildInfoRow('Delivery code', _order!.deliveryCode!),
+                            _buildInfoTile(
+                              icon: Icons.qr_code_2_rounded,
+                              label: 'Delivery code',
+                              value: _order!.deliveryCode!,
+                            ),
                           if (_order!.deliveryDoneBy != null && _order!.deliveryDoneBy!.isNotEmpty)
-                            _buildInfoRow('Delivery done by', _order!.deliveryDoneBy!),
+                            _buildInfoTile(
+                              icon: Icons.local_shipping_outlined,
+                              label: 'Delivery done by',
+                              value: _order!.deliveryDoneBy!,
+                            ),
                           if (_order!.deliveryDoneAt != null)
-                            _buildInfoRow('Delivery done at', _formatDate(_order!.deliveryDoneAt!)),
+                            _buildInfoTile(
+                              icon: Icons.event_available_outlined,
+                              label: 'Delivery done at',
+                              value: _formatDate(_order!.deliveryDoneAt!),
+                            ),
                           if (_order!.invoiceNumber != null && _order!.invoiceNumber!.isNotEmpty)
-                            _buildInfoRow('Invoice number', _order!.invoiceNumber!),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildSectionCard(
-                        title: 'Order Totals',
-                        children: [
-                          _buildInfoRow('Total manual bottom edge', _order!.totalManualBottomEdgeWeight),
-                          _buildInfoRow('Total calculated bottom edge', _order!.totalCalculatedBottomEdgeWeight),
-                          _buildInfoRow('Total product weight', _order!.productWeight),
+                            _buildInfoTile(
+                              icon: Icons.description_outlined,
+                              label: 'Invoice number',
+                              value: _order!.invoiceNumber!,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),
                       _buildSectionCard(
                         title: 'Cylinders',
+                        icon: Icons.propane_tank,
+                        badgeText: _order!.items.length.toString(),
                         children: _order!.items.isEmpty
                             ? [
                                 Text(

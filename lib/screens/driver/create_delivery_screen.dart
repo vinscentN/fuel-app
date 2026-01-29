@@ -30,6 +30,18 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   bool _isLoadingDetails = true;
   GasOrder? _fullOrderDetails;
 
+  double _parseWeight(String? value) {
+    if (value == null) return 0;
+    return double.tryParse(value) ?? 0;
+  }
+
+  String _calculateBottomWeight(GasOrderItem item) {
+    final beforeRefill = _parseWeight(item.beforeRefillWeight);
+    final capacity = item.gasTank.capacity;
+    final bottomWeight = beforeRefill - capacity;
+    return bottomWeight.toStringAsFixed(1);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -438,7 +450,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                                     ),
                                   ),
                                   Text(
-                                    '${item.manualBottomEdgeWeight} kg',
+                                    '${_calculateBottomWeight(item)} kg',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../models/driver_order.dart';
 import '../../models/warehouse_purchase.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/warehouse_service.dart';
 import '../../utils/colors.dart';
-import 'record_purchase_screen.dart';
+import 'fulfill_driver_order_screen.dart';
 
 class WarehousePurchasesScreen extends StatefulWidget {
   const WarehousePurchasesScreen({super.key});
@@ -17,13 +18,20 @@ class WarehousePurchasesScreen extends StatefulWidget {
 class _WarehousePurchasesScreenState extends State<WarehousePurchasesScreen> {
   final WarehouseService _warehouseService = WarehouseService();
   List<WarehousePurchase> _purchases = [];
+  final Map<String, List<DriverOrder>> _ordersByType = {
+    'GAS_REFILL': [],
+    'BOBTAIL_ORDER': [],
+  };
   double _balance = 0.0;
   bool _isLoading = true;
+  bool _isLoadingOrders = true;
+  String? _ordersError;
 
   @override
   void initState() {
     super.initState();
     _loadPurchases();
+    _loadDriverOrders();
   }
 
   Future<void> _loadPurchases() async {
@@ -81,139 +89,469 @@ class _WarehousePurchasesScreenState extends State<WarehousePurchasesScreen> {
     }
   }
 
+  Future<void> _loadDriverOrders() async {
+    setState(() {
+      _isLoadingOrders = true;
+      _ordersError = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      final user = authProvider.currentUser;
+
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      if (user == null) {
+        throw Exception('User not found');
+      }
+
+      final result = await _warehouseService.getDriverOrders(
+        driverId: user.id,
+        token: token,
+      );
+
+      if (result['success'] == true) {
+        final orders = result['orders'] as List<DriverOrder>;
+        setState(() {
+          _ordersByType['GAS_REFILL'] =
+              orders.where((order) => order.type.toUpperCase() == 'GAS_REFILL').toList();
+          _ordersByType['BOBTAIL_ORDER'] =
+              orders.where((order) => order.type.toUpperCase() == 'BOBTAIL_ORDER').toList();
+          _isLoadingOrders = false;
+        });
+      } else {
+        throw Exception('Failed to load orders');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingOrders = false;
+        _ordersError = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  bool _isFulfillable(DriverOrder order) {
+    final status = order.status.toUpperCase();
+    final type = order.type.toUpperCase();
+
+    if (type == 'GAS_REFILL') {
+      return status != 'DELIVERED';
+    }
+
+    if (type == 'BOBTAIL_ORDER') {
+      return status != 'COMPLETED' && status != 'CANCELLED';
+    }
+
+    return true;
+  }
+
+  String _formatOrderTypeLabel(DriverOrder order) {
+    final normalizedType = order.type.toUpperCase();
+    if (normalizedType == 'GAS_REFILL') {
+      return 'Cylinder Refill';
+    }
+    if (normalizedType == 'BOBTAIL_ORDER') {
+      final orderType = (order.orderType ?? '').toUpperCase();
+      if (orderType == 'BOBTAIL_REFILL_SITE') {
+        return 'Bobtail Refill';
+      }
+      if (orderType == 'BOBTAIL_PURCHASE') {
+        return 'Bobtail Purchase';
+      }
+      return 'Bobtail Order';
+    }
+    return order.type;
+  }
+
+  String _formatOrderTitle(DriverOrder order) {
+    if (order.type.toUpperCase() == 'GAS_REFILL') {
+      return order.requestCode ?? 'Gas Refill #${order.id}';
+    }
+    return order.bobtail?.name ?? 'Bobtail #${order.id}';
+  }
+
+  String _formatOrderSubtitle(DriverOrder order) {
+    if (order.type.toUpperCase() == 'GAS_REFILL') {
+      return order.site?.name ?? 'Site';
+    }
+    if (order.supplier?.name != null && order.supplier!.name.isNotEmpty) {
+      return order.supplier!.name;
+    }
+    return order.site?.name ?? 'Supplier';
+  }
+
+  String _formatQuantity(DriverOrder order) {
+    final quantity = order.productWeight ?? order.actualKg;
+    if (quantity == null || quantity.isEmpty) return 'N/A';
+    return '$quantity kg';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Supplier Purchases'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary.withOpacity(0.05),
-              Colors.white,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Supplier Purchases'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white,
+            tabs: [
+              Tab(text: 'PENDING'),
+              Tab(text: 'COMPLETED'),
             ],
           ),
         ),
-        child: Column(
-          children: [
-            // Balance Card
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primary.withOpacity(0.8),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Balance',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                    ],
-                  ),
-                  Text(
-                    '${_balance.toStringAsFixed(2)} kg',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary.withOpacity(0.05),
+                Colors.white,
+              ],
             ),
-
-            // Purchases List
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _purchases.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.inventory_2_outlined,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No purchases recorded yet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _loadPurchases,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: _purchases.length,
-                            itemBuilder: (context, index) {
-                              return _buildPurchaseCard(_purchases[index]);
-                            },
-                          ),
-                        ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const RecordPurchaseScreen(),
-            ),
-          );
-
-          if (result == true) {
-            _loadPurchases();
-          }
-        },
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text(
-          'New Purchase',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
+          ),
+          child: TabBarView(
+            children: [
+              _buildFulfillmentTab(),
+              _buildProcessedTab(),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildFulfillmentTab() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            child: const TabBar(
+              labelColor: AppColors.primary,
+              unselectedLabelColor: Colors.black54,
+              indicatorColor: AppColors.primary,
+              tabs: [
+                Tab(text: 'Cylinder Refills'),
+                Tab(text: 'Bobtail Refills'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildOrdersList('GAS_REFILL'),
+                _buildOrdersList('BOBTAIL_ORDER'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrdersList(String orderType) {
+    if (_isLoadingOrders) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_ordersError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                _ordersError!,
+                style: const TextStyle(color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadDriverOrders,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final orders = (_ordersByType[orderType] ?? [])
+        .where(_isFulfillable)
+        .toList();
+
+    if (orders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No orders to fulfill',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadDriverOrders,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadDriverOrders,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          final order = orders[index];
+          final statusColor = _statusColor(order.status);
+          final createdAt = order.createdAt ?? order.requestCreatedAt;
+          final dateLabel = createdAt != null ? _formatDate(createdAt) : 'N/A';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () async {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FulfillDriverOrderScreen(order: order),
+                    ),
+                  );
+
+                  if (result == true && mounted) {
+                    await _loadDriverOrders();
+                    await _loadPurchases();
+                  }
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _formatOrderTitle(order),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: statusColor.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              order.status,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              _formatOrderTypeLabel(order),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _formatOrderSubtitle(order),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.scale_outlined,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _formatQuantity(order),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              dateLabel,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProcessedTab() {
+    return Column(
+      children: [
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _purchases.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No purchases recorded yet',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadPurchases,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _purchases.length,
+                        itemBuilder: (context, index) {
+                          return _buildPurchaseCard(_purchases[index]);
+                        },
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return Colors.orange;
+      case 'IN_TRANSIT':
+        return Colors.blue;
+      case 'COMPLETED':
+      case 'DELIVERED':
+        return Colors.green;
+      case 'CANCELLED':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatDate(DateTime dateTime) {
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
+    return dateFormat.format(dateTime);
   }
 
   Widget _buildPurchaseCard(WarehousePurchase purchase) {

@@ -56,10 +56,11 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
 
   void _viewQRCode(PendingGasOrder order) {
     // Navigate to delivery QR code screen
+    final deliveryCode = order.deliveryCode ?? order.requestCode;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DeliveryQRCodeScreen(requestCode: order.requestCode),
+        builder: (context) => DeliveryQRCodeScreen(deliveryCode: deliveryCode),
       ),
     );
   }
@@ -84,7 +85,7 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Pending Deliveries'),
+        title: const Text('New Deliveries'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 1,

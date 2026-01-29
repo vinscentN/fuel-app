@@ -86,9 +86,11 @@ class _ReceiveDeliveryScreenState extends State<ReceiveDeliveryScreen> {
         return;
       }
 
+      final cylinderId = item.gasTankId != 0 ? item.gasTankId : item.gasTank.id;
+
       tanks.add({
         'item_id': item.id,
-        'gas_tank_id': item.gasTankId,
+        'cylinder_id': cylinderId,
         'received_weight': weight,
       });
     }

@@ -562,10 +562,11 @@ class PosProvider extends ChangeNotifier {
     required String description,
     required String siteName,
     required String siteCode,
+    String? copyType,
   }) async {
     _setLoading(true);
     try {
-      final result = await _channel.invokeMethod("printDeliveryReceipt", {
+      final payload = {
         "requestCode": requestCode,
         "deliveryCode": deliveryCode,
         "invoiceNumber": invoiceNumber,
@@ -580,7 +581,13 @@ class PosProvider extends ChangeNotifier {
         "description": description,
         "siteName": siteName,
         "siteCode": siteCode,
-      });
+      };
+
+      if (copyType != null && copyType.isNotEmpty) {
+        payload["copyType"] = copyType;
+      }
+
+      final result = await _channel.invokeMethod("printDeliveryReceipt", payload);
       _lastResult = {"printResult": result};
       _lastError = null;
     } catch (e) {
