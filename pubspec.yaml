@@ -1,5 +1,5 @@
 name: gasman
-description: "GASMAN - Gas Station Management System"
+description: "Buffalo Brewing POS - Point of Sale System"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -72,7 +72,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "images/logo.png"
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#8B4513"
   adaptive_icon_foreground: "images/logo.png"
   # Balanced padding to prevent stretching while filling space
   adaptive_icon_foreground_inset: 16

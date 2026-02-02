@@ -6,13 +6,16 @@ import 'providers/auth_provider.dart';
 import 'providers/fuel_provider.dart';
 import 'providers/payment_provider.dart';
 import 'providers/pos_provider.dart';
+import 'providers/buffalo_provider.dart';
 import 'routes/app_routes.dart';
 import 'utils/colors.dart';
+import 'utils/buffalo_colors.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/dashboard_screen.dart';
 import 'screens/pos_test_screen.dart';
 import 'screens/home/landing_menu_screen.dart';
 import 'screens/splash/splash_screen.dart';
+import 'screens/buffalo/buffalo_main_menu_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,23 +38,24 @@ class FuelStationApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FuelProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
         ChangeNotifierProvider(create: (_) => PosProvider()),
+        ChangeNotifierProvider(create: (_) => BuffaloProvider()),
       ],
       child: MaterialApp(
-        title: 'Fuel Mate',
+        title: 'Buffalo Brewing Company',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          primarySwatch: Colors.blue,
-          primaryColor: AppColors.primary,
-          scaffoldBackgroundColor: AppColors.background,
+          primarySwatch: BuffaloColors.primarySwatch,
+          primaryColor: BuffaloColors.primary,
+          scaffoldBackgroundColor: BuffaloColors.background,
           appBarTheme: const AppBarTheme(
-            backgroundColor: AppColors.primary,
+            backgroundColor: BuffaloColors.primary,
             foregroundColor: Colors.white,
             elevation: 1,
           ),
           textTheme: GoogleFonts.poppinsTextTheme(),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: BuffaloColors.secondary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -65,15 +69,15 @@ class FuelStationApp extends StatelessWidget {
           inputDecorationTheme: InputDecorationTheme(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.border),
+              borderSide: BorderSide(color: BuffaloColors.cardBorder),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.border),
+              borderSide: BorderSide(color: BuffaloColors.cardBorder),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.primary, width: 2),
+              borderSide: BorderSide(color: BuffaloColors.secondary, width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -88,8 +92,8 @@ class FuelStationApp extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        // Splash screen is the entry point
-        home: const SplashScreen(),
+        // Buffalo Brewing Company main menu is the entry point
+        home: const BuffaloMainMenuScreen(),
       ),
     );
   }

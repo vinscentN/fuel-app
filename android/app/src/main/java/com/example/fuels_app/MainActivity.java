@@ -569,15 +569,30 @@ public class MainActivity extends FlutterActivity {
 
                 if (unit == null || unit.trim().isEmpty()) unit = "L";
 
-                printReceipt("MERCHANT COPY", stationName, address, phone, date, time,
-                        pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
-                        cardNo, authNo, rrn);
+                // Check if this is a Buffalo raw text receipt (all fields empty except litres)
+                boolean isRawTextReceipt = (stationName == null || stationName.isEmpty()) &&
+                                          (address == null || address.isEmpty()) &&
+                                          (phone == null || phone.isEmpty()) &&
+                                          (date == null || date.isEmpty()) &&
+                                          (time == null || time.isEmpty()) &&
+                                          (litres != null && !litres.isEmpty());
 
-                printReceipt("CUSTOMER COPY", stationName, address, phone, date, time,
-                        pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
-                        cardNo, authNo, rrn);
+                if (isRawTextReceipt) {
+                    // Buffalo receipt - just print raw text without any labels or formatting
+                    printRawText(litres);
+                    runOnUiThread(() -> result.success("Receipt printed"));
+                } else {
+                    // Standard gas station receipt - print both copies
+                    printReceipt("MERCHANT COPY", stationName, address, phone, date, time,
+                            pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
+                            cardNo, authNo, rrn);
 
-                runOnUiThread(() -> result.success("Merchant & Customer receipts printed"));
+                    printReceipt("CUSTOMER COPY", stationName, address, phone, date, time,
+                            pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
+                            cardNo, authNo, rrn);
+
+                    runOnUiThread(() -> result.success("Merchant & Customer receipts printed"));
+                }
             } catch (Exception e) {
                 runOnUiThread(() -> result.error("PRINT_EXCEPTION", e.getMessage(), null));
             }
@@ -635,31 +650,44 @@ public class MainActivity extends FlutterActivity {
 
         PrinterApi.PrnStr_Api(centerText("=== RECEIPT ==="));
         PrinterApi.PrnStr_Api("\n");
-        PrinterApi.PrnStr_Api("Station: " + stationName);
-        PrinterApi.PrnStr_Api("Address: " + address);
-        PrinterApi.PrnStr_Api("Tel: " + phone);
-        PrinterApi.PrnStr_Api("--------------------------------");
-        PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
-        if (operatorName != null && !operatorName.trim().isEmpty()) {
-            PrinterApi.PrnStr_Api("Operator: " + operatorName);
-        }
-        PrinterApi.PrnStr_Api("Product: " + product);
-        PrinterApi.PrnStr_Api("Qty (" + unit + "): " + litres);
-        PrinterApi.PrnStr_Api("Price/" + unit + ": " + pricePerLitre);
-        PrinterApi.PrnStr_Api("--------------------------------");
-        PrinterApi.PrnFontSet_Api(32, 32, 0);
-        PrinterApi.PrnStr_Api("TOTAL: " + total);
-        PrinterApi.PrnFontSet_Api(24, 24, 0);
-        PrinterApi.PrnStr_Api("--------------------------------");
-        PrinterApi.PrnStr_Api("Payment: " + payment);
-        PrinterApi.PrnStr_Api("Card No: " + cardNo);
-        PrinterApi.PrnStr_Api("Auth No: " + authNo);
-        PrinterApi.PrnStr_Api("RRN: " + rrn);
-        PrinterApi.PrnStr_Api("\n");
-        PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
-        PrinterApi.PrnStr_Api("\n");
-        PrinterApi.PrnStr_Api(centerText("---- " + copyType + " ----"));
+//        PrinterApi.PrnStr_Api("Station: " + stationName);
+//        PrinterApi.PrnStr_Api("Address: " + address);
+//        PrinterApi.PrnStr_Api("Tel: " + phone);
+//        PrinterApi.PrnStr_Api("--------------------------------");
+//        PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
+//        if (operatorName != null && !operatorName.trim().isEmpty()) {
+//            PrinterApi.PrnStr_Api("Operator: " + operatorName);
+//        }
+//        PrinterApi.PrnStr_Api("Product: " + product);
+//        PrinterApi.PrnStr_Api("Qty (" + unit + "): " + litres);
+//        PrinterApi.PrnStr_Api("Price/" + unit + ": " + pricePerLitre);
+//        PrinterApi.PrnStr_Api("--------------------------------");
+//        PrinterApi.PrnFontSet_Api(32, 32, 0);
+//        PrinterApi.PrnStr_Api("TOTAL: " + total);
+//        PrinterApi.PrnFontSet_Api(24, 24, 0);
+//        PrinterApi.PrnStr_Api("--------------------------------");
+//        PrinterApi.PrnStr_Api("Payment: " + payment);
+//        PrinterApi.PrnStr_Api("Card No: " + cardNo);
+//        PrinterApi.PrnStr_Api("Auth No: " + authNo);
+//        PrinterApi.PrnStr_Api("RRN: " + rrn);
+//        PrinterApi.PrnStr_Api("\n");
+//        PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
+//        PrinterApi.PrnStr_Api("\n");
+//        PrinterApi.PrnStr_Api(centerText("---- " + copyType + " ----"));
         PrinterApi.PrnStr_Api("\n\n\n");
+        PrinterApi.PrnStart_Api();
+    }
+
+    // Print raw text without any labels or formatting (for Buffalo receipts)
+    private void printRawText(String text) {
+        PrinterApi.PrnClrBuff_Api();
+        PrinterApi.PrnFontSet_Api(24, 24, 0);
+        PrinterApi.PrnSetGray_Api(15);
+        PrinterApi.PrnLineSpaceSet_Api((short) 3, 0);
+
+        // Just print the text as-is
+        PrinterApi.PrnStr_Api(text);
+
         PrinterApi.PrnStart_Api();
     }
 
@@ -671,10 +699,10 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnSetGray_Api(15);
         PrinterApi.PrnLineSpaceSet_Api((short) 5, 0);
 
-        // Print logo
-        Bitmap logoBitmap = loadScaledLogo();
-        printCenteredLogo(logoBitmap);
-        PrinterApi.PrnStr_Api("\n");
+//        // Print logo
+//        Bitmap logoBitmap = loadScaledLogo();
+//        printCenteredLogo(logoBitmap);
+//        PrinterApi.PrnStr_Api("\n");
 
         // Header
         PrinterApi.PrnStr_Api(centerText("=== " + title + " ==="));

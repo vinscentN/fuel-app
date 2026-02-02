@@ -4,19 +4,11 @@
     <!-- White background -->
     <item android:drawable="@android:color/white" />
 
-    <!-- Logo centered -->
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/logo" />
-    </item>
-
-    <!-- Circular progress indicator below logo -->
+    <!-- Circular progress indicator centered -->
     <item
         android:width="40dp"
         android:height="40dp"
-        android:gravity="center"
-        android:top="220dp">
+        android:gravity="center">
         <shape android:shape="ring"
             android:innerRadius="16dp"
             android:thickness="3dp"
@@ -30,7 +22,7 @@
         android:width="6dp"
         android:height="6dp"
         android:gravity="center"
-        android:top="237dp"
+        android:top="17dp"
         android:right="10dp">
         <shape android:shape="oval">
             <solid android:color="@color/primary"/>

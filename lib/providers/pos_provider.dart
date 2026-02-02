@@ -599,5 +599,112 @@ class PosProvider extends ChangeNotifier {
     }
   }
 
+  // Buffalo Brewing Sales Receipt
+  Future<bool> printBuffaloSalesReceipt({
+    required String companyName,
+    required String receiptNumber,
+    required String date,
+    required String time,
+    required String cardNo,
+    required List<Map<String, String>> items, // [{name: 'Product', qty: '2', price: '10.00', total: '20.00'}]
+    required String totalAmount,
+    required String currency,
+    String? remainingBalance,
+    String copyType = 'CUSTOMER COPY',
+  }) async {
+    _setLoading(true);
+    try {
+      // Generate random reference number
+      final random = DateTime.now().millisecondsSinceEpoch % 1000000;
+      final refNumber = 'REF${random.toString().padLeft(6, '0')}';
+
+      // Build a minimal, compact receipt
+      final StringBuffer receipt = StringBuffer();
+
+      receipt.writeln(companyName);
+      receipt.writeln(copyType);
+      receipt.writeln(refNumber);
+      receipt.writeln('$date  $time');
+      receipt.writeln(cardNo);
+      receipt.writeln('------------------------');
+
+      // Items - compact format
+      for (var item in items) {
+        receipt.writeln('${item['name']}');
+        receipt.writeln('  ${item['qty']} x ${item['price']}  ${item['total']}');
+      }
+
+      receipt.writeln('========================');
+      receipt.writeln('TOTAL  $currency$totalAmount');
+
+      if (remainingBalance != null) {
+        receipt.writeln('BAL    $currency$remainingBalance');
+      }
+
+      receipt.writeln('========================');
+      receipt.writeln('Thank you!');
+      receipt.writeln('');
+
+      final receiptText = receipt.toString();
+
+      // Use testPrint with minimal fields to avoid labels
+      await testPrint(
+        stationName: '',
+        address: '',
+        phone: '',
+        date: '',
+        time: '',
+        pumpNo: '',
+        product: '',
+        litres: receiptText,
+        pricePerLitre: '',
+        total: '',
+        payment: '',
+        cardNo: '',
+        authNo: '',
+        rrn: '',
+        operatorName: '',
+      );
+
+      _lastError = null;
+      return true;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = 'Sales receipt print failed: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Buffalo Brewing Balance Receipt
+  Future<bool> printBuffaloBalanceReceipt({
+    required String companyName,
+    required String date,
+    required String time,
+    required String cardNo,
+    required List<Map<String, String>> balances, // [{currency: 'USD', balance: '28.50'}]
+  }) async {
+    _setLoading(true);
+    try {
+      // Use existing balance receipt printer
+      await printBalanceEnquiryReceipt(
+        stationName: companyName,
+        date: date,
+        time: time,
+        cardNo: cardNo,
+        items: balances,
+        title: 'BALANCE ENQUIRY',
+      );
+      return true;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = 'Balance receipt print failed: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
 
 }
