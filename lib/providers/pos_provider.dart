@@ -279,6 +279,7 @@ class PosProvider extends ChangeNotifier {
     required List<Map<String, String>> items, // list of maps using response field names or normalized keys
     Map<String, dynamic>? attendant, // {first_name,last_name,service_station_name}
     Map<String, dynamic>? device,    // {serial_number,terminal_id}
+    Map<String, dynamic>? summary,   // {total_quantity_kgs, transaction_count}
     String title = 'BATCH CUT OFF',
   }) async {
     _setLoading(true);
@@ -294,6 +295,7 @@ class PosProvider extends ChangeNotifier {
         "title": title,
         if (attendant != null) "attendant": attendant,
         if (device != null) "device": device,
+        if (summary != null) "summary": summary,
       });
       _lastResult = {"printResult": result};
       _lastError = null;
@@ -393,6 +395,7 @@ class PosProvider extends ChangeNotifier {
     required Map<String, dynamic>? device,
     required String time,
     required List<Map<String, String>> items, // from API 'data'
+    Map<String, dynamic>? summary, // {total_quantity_kgs, record_count}
   }) async {
     _setLoading(true);
     try {
@@ -402,6 +405,7 @@ class PosProvider extends ChangeNotifier {
         if (device != null) "device": device,
         "time": time,
         "items": items,
+        if (summary != null) "summary": summary,
       });
       _lastResult = {"printResult": result};
       _lastError = null;

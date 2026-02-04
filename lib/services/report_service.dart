@@ -7,10 +7,12 @@ class ReportService {
   Future<Map<String, dynamic>> fetchBatchCutoff({
     required String serialNumber,
     required String operatorCode,
+    required int attendantId,
   }) async {
     final payload = {
       'serial_number': serialNumber,
       'operator_code': operatorCode,
+      'attendant_id': attendantId,
     };
     final resp = await _api.post(ApiConstants.posBatchCutoff, body: payload);
     return resp;
@@ -26,10 +28,12 @@ class ReportService {
   Future<Map<String, dynamic>> fetchBatchAudit({
     required String serialNumber,
     required String operatorCode,
+    required int attendantId,
   }) async {
     final payload = {
       'serial_number': serialNumber,
       'operator_code': operatorCode,
+      'attendant_id': attendantId,
     };
     return _api.post(ApiConstants.posBatchAudit, body: payload);
   }

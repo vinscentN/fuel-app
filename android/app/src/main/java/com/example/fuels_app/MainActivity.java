@@ -722,19 +722,22 @@ public class MainActivity extends FlutterActivity {
                 String title = safeStr(args.get("title")); // BATCH CUT OFF
                 Map<String, Object> attendant = (Map<String, Object>) args.get("attendant");
                 Map<String, Object> device = (Map<String, Object>) args.get("device");
+                Map<String, Object> summary = (Map<String, Object>) args.get("summary");
                 String operatorCode = safeStr(args.get("operatorCode"));
                 java.util.List<Map<String, String>> items = (java.util.List<Map<String, String>>) args.get("items");
 
                 // Fallbacks if attendant/device missing
                 String stationName = attendant != null ? safeStr(attendant.get("service_station_name")) : safeStr(args.get("stationName"));
                 String operatorName = "";
+                String attendantId = "";
                 if (attendant != null) {
                     operatorName = (safeStr(attendant.get("first_name")) + " " + safeStr(attendant.get("last_name"))).trim();
+                    attendantId = safeStr(attendant.get("id"));
                 }
                 String serialNumber = device != null ? safeStr(device.get("serial_number")) : "";
                 String terminalId = device != null ? safeStr(device.get("terminal_id")) : "";
 
-                printBatchCutoff(title, stationName, operatorName, operatorCode, serialNumber, terminalId, items);
+                printBatchCutoff(title, stationName, operatorName, attendantId, operatorCode, serialNumber, terminalId, items, summary);
                 runOnUiThread(() -> result.success("batch cutoff printed"));
             } catch (Exception e) {
                 Log.e(TAG, "BatchCutOff print error", e);
@@ -746,10 +749,12 @@ public class MainActivity extends FlutterActivity {
     private void printBatchCutoff(String title,
                                   String stationName,
                                   String operatorName,
+                                  String attendantId,
                                   String operatorCode,
                                   String serialNumber,
                                   String terminalId,
-                                  java.util.List<Map<String, String>> items) {
+                                  java.util.List<Map<String, String>> items,
+                                  Map<String, Object> summary) {
         PrinterApi.PrnClrBuff_Api();
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
@@ -769,10 +774,26 @@ public class MainActivity extends FlutterActivity {
         if (operatorName != null && !operatorName.isEmpty()) {
             PrinterApi.PrnStr_Api(centerText("Operator: " + operatorName));
         }
+        if (attendantId != null && !attendantId.isEmpty()) {
+            PrinterApi.PrnStr_Api(centerText("Attendant ID: " + attendantId));
+        }
         if ((serialNumber != null && !serialNumber.isEmpty()) || (terminalId != null && !terminalId.isEmpty())) {
             PrinterApi.PrnStr_Api(centerText("SN: " + safeStr(serialNumber) + "   TID: " + safeStr(terminalId)));
         }
         PrinterApi.PrnStr_Api("\n");
+
+        // Batch summary
+        String totalQty = summary != null ? safeStr(summary.get("total_quantity_kgs")) : "";
+        String txnCount = summary != null ? safeStr(summary.get("transaction_count")) : "";
+        if (totalQty != null && !totalQty.isEmpty()) {
+            PrinterApi.PrnStr_Api("Total Qty: " + totalQty + " Kgs");
+        }
+        if (txnCount != null && !txnCount.isEmpty()) {
+            PrinterApi.PrnStr_Api("Transaction Count: " + txnCount);
+        }
+        if ((totalQty != null && !totalQty.isEmpty()) || (txnCount != null && !txnCount.isEmpty())) {
+            PrinterApi.PrnStr_Api("--------------------------------");
+        }
 
         // Transactions
         PrinterApi.PrnStr_Api("--------------------------------");
@@ -786,10 +807,12 @@ public class MainActivity extends FlutterActivity {
                 String product = safeStr(row.get("product_type_name"));
                 String desc = safeStr(row.get("description"));
                 String status = safeStr(row.get("status"));
+                String qtyKgs = safeStr(row.get("quantity_kgs"));
 
                 if (txn != null && !txn.isEmpty()) PrinterApi.PrnStr_Api("TXN: " + txn);
                 if (dt != null && !dt.isEmpty())   PrinterApi.PrnStr_Api("Date: " + dt);
                 if (product != null && !product.isEmpty()) PrinterApi.PrnStr_Api("Product: " + product);
+                if (qtyKgs != null && !qtyKgs.isEmpty()) PrinterApi.PrnStr_Api("Qty: " + qtyKgs + " Kgs");
                 if (desc != null && !desc.isEmpty()) PrinterApi.PrnStr_Api("Description: " + desc);
                 BigDecimal val = parseAmount(amt);
                 PrinterApi.PrnStr_Api("Amount: " + formatAmountWithUnit(cur, val));
@@ -951,18 +974,21 @@ public class MainActivity extends FlutterActivity {
                 String title = safeStr(args.get("title")); // BATCH AUDIT
                 Map<String, Object> attendant = (Map<String, Object>) args.get("attendant");
                 Map<String, Object> device = (Map<String, Object>) args.get("device");
+                Map<String, Object> summary = (Map<String, Object>) args.get("summary");
                 String time = safeStr(args.get("time"));
                 java.util.List<Map<String, String>> items = (java.util.List<Map<String, String>>) args.get("items");
 
                 String stationName = attendant != null ? safeStr(attendant.get("service_station_name")) : "";
                 String operatorName = "";
+                String attendantId = "";
                 if (attendant != null) {
                     operatorName = (safeStr(attendant.get("first_name")) + " " + safeStr(attendant.get("last_name"))).trim();
+                    attendantId = safeStr(attendant.get("id"));
                 }
                 String serialNumber = device != null ? safeStr(device.get("serial_number")) : "";
                 String terminalId = device != null ? safeStr(device.get("terminal_id")) : "";
 
-                printBatchAudit(title, stationName, operatorName, serialNumber, terminalId, time, items);
+                printBatchAudit(title, stationName, operatorName, attendantId, serialNumber, terminalId, time, items, summary);
                 runOnUiThread(() -> result.success("batch audit printed"));
             } catch (Exception e) {
                 Log.e(TAG, "BatchAudit print error", e);
@@ -974,10 +1000,12 @@ public class MainActivity extends FlutterActivity {
     private void printBatchAudit(String title,
                                  String stationName,
                                  String operatorName,
+                                 String attendantId,
                                  String serialNumber,
                                  String terminalId,
                                  String time,
-                                 java.util.List<Map<String, String>> items) {
+                                 java.util.List<Map<String, String>> items,
+                                 Map<String, Object> summary) {
         PrinterApi.PrnClrBuff_Api();
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
@@ -994,29 +1022,36 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api("\n");
         if (stationName != null && !stationName.isEmpty()) PrinterApi.PrnStr_Api(centerText(stationName));
         if (operatorName != null && !operatorName.isEmpty()) PrinterApi.PrnStr_Api(centerText("Operator: " + operatorName));
+        if (attendantId != null && !attendantId.isEmpty()) PrinterApi.PrnStr_Api(centerText("Attendant ID: " + attendantId));
         if ((serialNumber != null && !serialNumber.isEmpty()) || (terminalId != null && !terminalId.isEmpty())) {
             PrinterApi.PrnStr_Api(centerText("SN: " + safeStr(serialNumber) + "   TID: " + safeStr(terminalId)));
         }
         if (time != null && !time.isEmpty()) PrinterApi.PrnStr_Api(centerText(time));
+        if (summary != null) {
+            String totalQty = safeStr(summary.get("total_quantity_kgs"));
+            String recordCount = safeStr(summary.get("record_count"));
+            if (totalQty != null && !totalQty.isEmpty()) PrinterApi.PrnStr_Api("Total Qty: " + totalQty + " Kgs");
+            if (recordCount != null && !recordCount.isEmpty()) PrinterApi.PrnStr_Api("Record Count: " + recordCount);
+        }
         PrinterApi.PrnStr_Api("\n");
         PrinterApi.PrnStr_Api("--------------------------------");
 
         // Body rows and totals
         LinkedHashMap<String, BigDecimal> totalsValue = new LinkedHashMap<>();
-        LinkedHashMap<String, BigDecimal> totalsLitres = new LinkedHashMap<>();
+        LinkedHashMap<String, BigDecimal> totalsKgs = new LinkedHashMap<>();
 
         if (items != null && !items.isEmpty()) {
             for (Map<String, String> row : items) {
                 String type = safeStr(row.get("transaction_type_name"));
                 String curName = safeStr(row.get("currency_name"));
                 String curSymbol = safeStr(row.get("currency_symbol"));
-                BigDecimal litres = parseAmount(safeStr(row.get("total_litres")));
+                BigDecimal kgs = parseAmount(safeStr(row.get("total_quantity_kgs")));
                 BigDecimal value = parseAmount(safeStr(row.get("total_value")));
 
                 // Line group for each summary row
                 String header = (type.isEmpty() ? "" : type) + (curName.isEmpty() ? "" : (headerNeedsSpace(type) ? " " : "") + "(" + curName + ")");
                 if (!header.trim().isEmpty()) PrinterApi.PrnStr_Api(header.trim());
-                PrinterApi.PrnStr_Api("Litres: " + new java.text.DecimalFormat("0.00").format(litres) + " L");
+                PrinterApi.PrnStr_Api("Kgs: " + new java.text.DecimalFormat("0.00").format(kgs) + " Kgs");
                 String valStr = (curSymbol.isEmpty() ? "$" : curSymbol) + new java.text.DecimalFormat("0.00").format(value);
                 PrinterApi.PrnStr_Api("Value: " + valStr);
                 PrinterApi.PrnStr_Api("--------------------------------");
@@ -1024,7 +1059,7 @@ public class MainActivity extends FlutterActivity {
                 // Accumulate totals
                 String key = curName.isEmpty() ? "UNKNOWN" : curName;
                 totalsValue.put(key, totalsValue.getOrDefault(key, BigDecimal.ZERO).add(value));
-                totalsLitres.put(key, totalsLitres.getOrDefault(key, BigDecimal.ZERO).add(litres));
+                totalsKgs.put(key, totalsKgs.getOrDefault(key, BigDecimal.ZERO).add(kgs));
             }
         } else {
             PrinterApi.PrnStr_Api("No data");
@@ -1036,8 +1071,8 @@ public class MainActivity extends FlutterActivity {
             PrinterApi.PrnStr_Api(centerText("Totals"));
             for (Map.Entry<String, BigDecimal> e : totalsValue.entrySet()) {
                 BigDecimal v = e.getValue();
-                BigDecimal l = totalsLitres.getOrDefault(e.getKey(), BigDecimal.ZERO);
-                String line = e.getKey() + ": " + new java.text.DecimalFormat("0.00").format(l) + " L, " + "$" + new java.text.DecimalFormat("0.00").format(v);
+                BigDecimal k = totalsKgs.getOrDefault(e.getKey(), BigDecimal.ZERO);
+                String line = e.getKey() + ": " + new java.text.DecimalFormat("0.00").format(k) + " Kgs, " + "$" + new java.text.DecimalFormat("0.00").format(v);
                 PrinterApi.PrnStr_Api(line);
             }
             PrinterApi.PrnStr_Api("--------------------------------");

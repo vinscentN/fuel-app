@@ -32,8 +32,13 @@ class _BatchCutoffScreenState extends State<BatchCutoffScreen> {
   Future<void> _loadReport() async {
     final auth = context.read<AuthProvider>();
     final serial = auth.serialNumber;
+    final attendantId = auth.currentUser?.id ?? 0;
     if (serial == null || serial.isEmpty) {
       setState(() => _error = 'Device not activated. Serial number missing.');
+      return;
+    }
+    if (attendantId <= 0) {
+      setState(() => _error = 'Logged-in attendant not found. Please login again.');
       return;
     }
 
@@ -56,6 +61,7 @@ class _BatchCutoffScreenState extends State<BatchCutoffScreen> {
       final resp = await _service.fetchBatchCutoff(
         serialNumber: serial,
         operatorCode: opCode,
+        attendantId: attendantId,
       );
       setState(() => _report = resp);
       // Auto-print once loaded
@@ -78,6 +84,7 @@ class _BatchCutoffScreenState extends State<BatchCutoffScreen> {
     final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
     final txns = (_report!['data'] as List?)?.cast<Map>() ?? const [];
+    final summary = (_report!['summary'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
     final items = txns.isEmpty
         ? <Map<String, String>>[
             // Keep keys as per API payload names for native handler
@@ -89,6 +96,7 @@ class _BatchCutoffScreenState extends State<BatchCutoffScreen> {
               'product_type_name': '',
               'description': '',
               'status': '',
+              'quantity_kgs': '',
             },
           ]
         : txns.map<Map<String, String>>((raw) {
@@ -101,6 +109,7 @@ class _BatchCutoffScreenState extends State<BatchCutoffScreen> {
               'product_type_name': (m['product_type_name'] ?? '').toString(),
               'description': (m['description'] ?? '').toString(),
               'status': (m['status'] ?? '').toString(),
+              'quantity_kgs': (m['quantity_kgs'] ?? '').toString(),
             };
           }).toList();
 
@@ -113,6 +122,7 @@ class _BatchCutoffScreenState extends State<BatchCutoffScreen> {
       title: 'BATCH CUT OFF',
       attendant: (_report!['attendant'] as Map?)?.cast<String, dynamic>(),
       device: (_report!['device'] as Map?)?.cast<String, dynamic>(),
+      summary: summary,
     );
 
     if (!mounted) return;
@@ -198,7 +208,10 @@ class _ReportView extends StatelessWidget {
   Widget build(BuildContext context) {
     final attendant = report['attendant'] as Map? ?? {};
     final device = report['device'] as Map? ?? {};
+    final summary = report['summary'] as Map? ?? {};
     final txns = (report['data'] as List?)?.cast<Map>() ?? const [];
+    final totalQty = (summary['total_quantity_kgs'] ?? 0).toString();
+    final txnCount = (summary['transaction_count'] ?? txns.length).toString();
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
@@ -214,6 +227,8 @@ class _ReportView extends StatelessWidget {
                 _row('Station', (attendant['service_station_name'] ?? '-').toString()),
                 _row('Serial', (device['serial_number'] ?? '-').toString()),
                 _row('Terminal', (device['terminal_id'] ?? '-').toString()),
+                _row('Total Qty', '$totalQty Kgs'),
+                _row('Txn Count', txnCount),
               ],
             ),
           ),

@@ -26,9 +26,15 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
   }
 
   Future<void> _loadAndPrint() async {
-    final serial = context.read<AuthProvider>().serialNumber;
+    final auth = context.read<AuthProvider>();
+    final serial = auth.serialNumber;
+    final attendantId = auth.currentUser?.id ?? 0;
     if (serial == null || serial.isEmpty) {
       setState(() => _error = 'Device not activated. Serial number missing.');
+      return;
+    }
+    if (attendantId <= 0) {
+      setState(() => _error = 'Logged-in attendant not found. Please login again.');
       return;
     }
     // Ask for operator code first
@@ -43,7 +49,11 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
     if (opCode == null || opCode.isEmpty) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final resp = await _service.fetchBatchAudit(serialNumber: serial, operatorCode: opCode);
+      final resp = await _service.fetchBatchAudit(
+        serialNumber: serial,
+        operatorCode: opCode,
+        attendantId: attendantId,
+      );
       setState(() => _report = resp);
 
       final pos = context.read<PosProvider>();
@@ -56,9 +66,10 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
             'transaction_type_name': (m['transaction_type_name'] ?? '').toString(),
             'currency_name': (m['currency_name'] ?? '').toString(),
             'currency_symbol': (m['currency_symbol'] ?? '').toString(),
-            'total_litres': (m['total_litres'] ?? '').toString(),
+            'total_quantity_kgs': (m['total_quantity_kgs'] ?? '').toString(),
             'total_value': (m['total_value'] ?? '').toString(),
           }).toList();
+      final summary = (_report!['summary'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
 
       await pos.printBatchAuditReceipt(
         title: 'BATCH AUDIT',
@@ -66,6 +77,7 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
         device: device,
         time: time,
         items: items,
+        summary: summary,
       );
 
       if (!mounted) return;
@@ -108,6 +120,7 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
 
     final a = (_report!['attendant'] as Map?) ?? const {};
     final d = (_report!['device'] as Map?) ?? const {};
+    final s = (_report!['summary'] as Map?) ?? const {};
     final time = (_report!['time'] ?? '').toString();
     final rows = (_report!['data'] as List?)?.cast<Map>() ?? const [];
 
@@ -126,6 +139,8 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
                 Text('Operator: ${(a['first_name'] ?? '')} ${(a['last_name'] ?? '')}'),
                 Text('SN: ${d['serial_number'] ?? ''}   TID: ${d['terminal_id'] ?? ''}'),
                 if (time.isNotEmpty) Text(time),
+                Text('Total Qty: ${s['total_quantity_kgs'] ?? 0} Kgs'),
+                Text('Record Count: ${s['record_count'] ?? rows.length}'),
                 const Divider(),
                 ...rows.map((r) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -133,7 +148,7 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${r['transaction_type_name'] ?? ''} (${r['currency_name'] ?? ''})', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text('Litres: ${r['total_litres'] ?? ''} L'),
+                      Text('Quantity: ${r['total_quantity_kgs'] ?? ''} Kgs'),
                       Text('Value: ${(r['currency_symbol'] ?? '')}${r['total_value'] ?? ''}'),
                       const Divider(),
                     ],
