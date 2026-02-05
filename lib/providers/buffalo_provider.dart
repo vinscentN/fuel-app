@@ -48,7 +48,7 @@ class BuffaloProvider with ChangeNotifier {
     }
   }
 
-  // Get card information
+  // Get card information for the configured Card
   Future<bool> getCardInfo(String cardNumber) async {
     _isLoadingCardInfo = true;
     _cardInfoError = null;
