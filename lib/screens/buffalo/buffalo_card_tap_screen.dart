@@ -17,7 +17,8 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
     with SingleTickerProviderStateMixin {
   final PosService _posService = PosService();
 
-  bool _isReadingCard = false;
+  bool _isReadingCard = false; // Waiting for tap
+  bool _isProcessingCard = false; // Card tapped, processing request
   String? _errorMessage;
   late AnimationController _animationController;
 
@@ -44,6 +45,7 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
   Future<void> _readCard() async {
     setState(() {
       _isReadingCard = true;
+      _isProcessingCard = false;
       _errorMessage = null;
     });
 
@@ -64,6 +66,10 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
         if (extractedCardNumber != null &&
             extractedCardNumber.toString().isNotEmpty) {
           final cardNumber = extractedCardNumber.toString();
+          setState(() {
+            _isReadingCard = false;
+            _isProcessingCard = true;
+          });
 
           if (!mounted) return;
 
@@ -89,16 +95,6 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
             return;
           }
 
-          // Show loading message
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Card read successfully. Getting card info...'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-
           // Get card info from API
           final provider = context.read<BuffaloProvider>();
           final success = await provider.getCardInfo(cardNumber);
@@ -108,6 +104,7 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
 
           setState(() {
             _isReadingCard = false;
+            _isProcessingCard = false;
           });
 
           if (success && mounted) {
@@ -138,6 +135,7 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
           setState(() {
             _errorMessage = 'Failed to read card number. Please try again.';
             _isReadingCard = false;
+            _isProcessingCard = false;
           });
           print('DEBUG: Card number extraction failed');
         }
@@ -145,6 +143,7 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
         setState(() {
           _errorMessage = 'Failed to read card. Please try again.';
           _isReadingCard = false;
+          _isProcessingCard = false;
         });
         print('DEBUG: Card read returned null');
       }
@@ -153,6 +152,7 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
       setState(() {
         _errorMessage = 'Error reading card: $e';
         _isReadingCard = false;
+        _isProcessingCard = false;
       });
     }
   }
@@ -177,9 +177,18 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
                 RotationTransition(
                   turns: _animationController,
                   child: const Icon(
-                    Icons.credit_card,
+                    Icons.contactless,
                     size: 120,
                     color: BuffaloColors.secondary,
+                  ),
+                )
+              else if (_isProcessingCard)
+                const SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 6,
+                    valueColor: AlwaysStoppedAnimation<Color>(BuffaloColors.secondary),
                   ),
                 )
               else if (_errorMessage != null)
@@ -200,7 +209,9 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
               // Status text
               Text(
                 _isReadingCard
-                    ? 'Reading card...'
+                    ? 'Waiting for card tap...'
+                    : _isProcessingCard
+                        ? 'Card tapped. Processing...'
                     : _errorMessage != null
                         ? 'Card Read Failed'
                         : 'Please tap your card',
@@ -226,6 +237,18 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
                     textAlign: TextAlign.center,
                   ),
                 )
+              else if (_isProcessingCard)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Please wait while we verify card details.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: BuffaloColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
               else
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 32),
@@ -242,14 +265,14 @@ class _BuffaloCardTapScreenState extends State<BuffaloCardTapScreen>
               const SizedBox(height: 40),
 
               // Retry button
-              if (_errorMessage != null && !_isReadingCard)
+              if (_errorMessage != null && !_isReadingCard && !_isProcessingCard)
                 ElevatedButton.icon(
                   onPressed: _readCard,
                   icon: const Icon(Icons.refresh),
                   label: const Text('Try Again'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: BuffaloColors.secondary,
-                    foregroundColor: Colors.black,
+                    foregroundColor: BuffaloColors.textOnSecondary,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,
                       vertical: 16,

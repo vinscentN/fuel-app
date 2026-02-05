@@ -173,7 +173,13 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      final resp = await _deviceService.launchDevice(serialNumber: serialNumber);
+      final normalizedSerial = serialNumber.trim();
+      // Persist serial early so non-login flows (e.g. direct sale) can reuse it.
+      _serialNumber = normalizedSerial;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('serial_number', normalizedSerial);
+
+      final resp = await _deviceService.launchDevice(serialNumber: normalizedSerial);
       // Expecting { status, message, data: { service_station_id, service_station_name, serial_number, ... } }
       final status = (resp['status'] ?? resp['success'])?.toString().toLowerCase();
       final isOk = status == 'success' || status == 'ok' || status == 'true' || status == '1';
@@ -186,7 +192,7 @@ class AuthProvider extends ChangeNotifier {
           final stationName = (data['service_station_name'] ?? data['station_name'] ?? '').toString();
           final stationAddress = (data['service_station_address'] ?? data['station_address'] ?? data['address'] ?? '').toString();
           final stationPhone = (data['service_station_phone'] ?? data['station_phone'] ?? data['phone'] ?? '').toString();
-          final sn = (data['serial_number'] ?? serialNumber).toString();
+          final sn = (data['serial_number'] ?? normalizedSerial).toString().trim();
 
           if (stationId.isNotEmpty) {
             print('[AuthProvider] Device launch: stationId=$stationId, stationName=$stationName');
@@ -203,7 +209,6 @@ class AuthProvider extends ChangeNotifier {
         }
         // Mark active even if API didn't return data block
         _deviceActive = true;
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('device_active', true);
         notifyListeners();
         return true;
@@ -372,14 +377,15 @@ class AuthProvider extends ChangeNotifier {
     String? serviceStationAddress,
     String? serviceStationPhone,
   }) async {
-    _serialNumber = serialNumber;
+    final normalizedSerial = serialNumber.trim();
+    _serialNumber = normalizedSerial;
     _serviceStationId = serviceStationId;
     _serviceStationName = serviceStationName;
     _serviceStationAddress = serviceStationAddress;
     _serviceStationPhone = serviceStationPhone;
     _deviceActive = true;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('serial_number', serialNumber);
+    await prefs.setString('serial_number', normalizedSerial);
     await prefs.setString('service_station_id', serviceStationId);
     await prefs.setString('service_station_name', serviceStationName);
     if ((serviceStationAddress ?? '').isNotEmpty) {

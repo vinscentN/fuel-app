@@ -3,7 +3,6 @@ import '../../utils/buffalo_colors.dart';
 import 'buffalo_card_tap_screen.dart';
 import 'buffalo_balance_screen.dart';
 import 'buffalo_pin_reset_screen.dart';
-import 'buffalo_test_connection_screen.dart';
 
 class BuffaloMainMenuScreen extends StatelessWidget {
   const BuffaloMainMenuScreen({Key? key}) : super(key: key);
@@ -77,7 +76,7 @@ class BuffaloMainMenuScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         _MenuButton(
                           icon: Icons.shopping_cart,
-                          title: 'Make a Purchase',
+                          title: 'Make a Sale',
                           description: 'Tap card to continue',
                           gradient: BuffaloColors.secondaryGradient,
                           onTap: () {
@@ -107,27 +106,6 @@ class BuffaloMainMenuScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) =>
                                     const BuffaloBalanceScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _MenuButton(
-                          icon: Icons.network_check,
-                          title: 'Test Connection',
-                          description: 'Test server connectivity',
-                          gradient: const LinearGradient(
-                            colors: [
-                              Colors.purple,
-                              Colors.purpleAccent,
-                            ],
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const BuffaloTestConnectionScreen(),
                               ),
                             );
                           },

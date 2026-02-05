@@ -83,6 +83,14 @@ class BuffaloApiService {
       print('DEBUG API: Response body: ${response.body}');
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      final data = jsonResponse['data'];
+      if (data is Map<String, dynamic>) {
+        final rawProductId = data['product_id'] ??
+            data['meal_product_id'] ??
+            data['default_product_id'] ??
+            ((data['product'] is Map<String, dynamic>) ? data['product']['id'] : null);
+        print('DEBUG API: card-info product_id candidate: $rawProductId');
+      }
 
       if (response.statusCode == 200) {
         print('DEBUG API: Success - parsing card info');
@@ -123,11 +131,17 @@ class BuffaloApiService {
   static Future<BuffaloSaleResponse> submitSale(
       BuffaloSaleRequest saleRequest) async {
     try {
+      final payload = saleRequest.toJson();
+      print('DEBUG API: Calling sale endpoint');
+      print('DEBUG API: URL: $baseUrl/sale');
+      print('DEBUG API: Request body: $payload');
       final response = await http.post(
         Uri.parse('$baseUrl/sale'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(saleRequest.toJson()),
+        body: json.encode(payload),
       ).timeout(const Duration(seconds: 30));
+      print('DEBUG API: Sale response status: ${response.statusCode}');
+      print('DEBUG API: Sale response body: ${response.body}');
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
 
@@ -153,15 +167,21 @@ class BuffaloApiService {
   static Future<BuffaloBalanceResponse> checkBalance(
       BuffaloBalanceRequest balanceRequest) async {
     try {
+      final payload = balanceRequest.toJson();
+      print('DEBUG API: Calling balance endpoint');
+      print('DEBUG API: URL: $baseUrl/balance');
+      print('DEBUG API: Request body: $payload');
       final response = await http.post(
         Uri.parse('$baseUrl/balance'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(balanceRequest.toJson()),
+        body: json.encode(payload),
       ).timeout(const Duration(seconds: 30));
+      print('DEBUG API: Balance response status: ${response.statusCode}');
+      print('DEBUG API: Balance response body: ${response.body}');
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return BuffaloBalanceResponse.fromJson(jsonResponse);
       } else {
         return BuffaloBalanceResponse(

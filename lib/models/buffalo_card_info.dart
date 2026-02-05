@@ -5,6 +5,7 @@ class BuffaloCardInfo {
   final String cardType;
   final String cardClass;
   final int mealBalance;
+  final int? productId;
 
   BuffaloCardInfo({
     required this.cardNumber,
@@ -13,9 +14,21 @@ class BuffaloCardInfo {
     required this.cardType,
     required this.cardClass,
     required this.mealBalance,
+    this.productId,
   });
 
   factory BuffaloCardInfo.fromJson(Map<String, dynamic> json) {
+    int? parseInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      return int.tryParse(v.toString());
+    }
+
+    final nestedProduct = json['product'];
+    final nestedProductId = nestedProduct is Map<String, dynamic>
+        ? nestedProduct['id']
+        : null;
+
     return BuffaloCardInfo(
       cardNumber: json['card_number'] ?? '',
       firstName: json['first_name'] ?? '',
@@ -23,6 +36,12 @@ class BuffaloCardInfo {
       cardType: json['card_type'] ?? '',
       cardClass: json['card_class'] ?? '',
       mealBalance: json['meal_balance'] ?? 0,
+      productId: parseInt(
+        json['product_id'] ??
+            json['meal_product_id'] ??
+            json['default_product_id'] ??
+            nestedProductId,
+      ),
     );
   }
 
@@ -34,6 +53,7 @@ class BuffaloCardInfo {
       'card_type': cardType,
       'card_class': cardClass,
       'meal_balance': mealBalance,
+      'product_id': productId,
     };
   }
 

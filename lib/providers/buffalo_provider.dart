@@ -95,15 +95,23 @@ class BuffaloProvider with ChangeNotifier {
   // Submit sale
   Future<bool> submitSale({
     required String serialNumber,
+    int? productId,
     int mealQuantity = 1,
   }) async {
     if (_cardNumber == null) {
       return false;
     }
 
+    final resolvedProductId = productId ?? _cardInfo?.productId ?? 1;
+    print(
+      'DEBUG: submitSale resolved product_id=$resolvedProductId '
+      '(arg=$productId, cardInfo=${_cardInfo?.productId})',
+    );
+
     final saleRequest = BuffaloSaleRequest(
       cardNumber: _cardNumber!,
       serialNumber: serialNumber,
+      productId: resolvedProductId,
       mealQuantity: mealQuantity,
     );
 

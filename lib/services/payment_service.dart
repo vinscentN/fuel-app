@@ -29,8 +29,17 @@ class PaymentService {
 
     // Resolve serial number (prefer saved session, fallback to device read)
     final prefs = await SharedPreferences.getInstance();
-    String? serial = prefs.getString('serial_number');
-    serial ??= await PosService().readSerialNumber();
+    String? serial = prefs.getString('serial_number')?.trim();
+    final lower = serial?.toLowerCase();
+    if (serial == null || serial.isEmpty || lower == 'unknown' || lower == 'null') {
+      serial = await PosService().readSerialNumber();
+    }
+    if (serial != null && serial.isNotEmpty) {
+      await prefs.setString('serial_number', serial);
+    }
+    if (serial == null || serial.isEmpty) {
+      throw Exception('Device serial number not available. Please relaunch app.');
+    }
 
     // Map to API-required fields
     final payload = <String, dynamic>{
@@ -38,7 +47,7 @@ class PaymentService {
       'attendant_id': int.tryParse(userId) ?? 0,
       'operator_code': int.tryParse((operatorPin ?? userId).toString()) ?? 0,
       'payment_method': paymentMethod.toString().split('.').last, // e.g. 'card', 'coupon'
-      'serial_number': serial ?? '',
+      'serial_number': serial,
       'product_id': int.tryParse(productId) ?? productId,
       // Currency model doesn't expose id yet; default to 1 for now
       'currency_id': 1,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/buffalo_colors.dart';
 import '../../providers/buffalo_provider.dart';
 import '../../services/pos_service.dart';
@@ -104,15 +105,22 @@ class _BuffaloCardPaymentScreenState extends State<BuffaloCardPaymentScreen> {
 
     try {
       final provider = context.read<BuffaloProvider>();
-      // Use empty PIN since we're not enforcing it
-      provider.setCardDetails(_cardNumber!, '');
+      provider.setCardNumber(_cardNumber!);
 
-      // Get serial number
-      final serialNumber =
-          await _posService.readSerialNumber() ?? 'POS-DEFAULT';
+      final prefs = await SharedPreferences.getInstance();
+      String? serialNumber = prefs.getString('serial_number')?.trim();
+      final lower = serialNumber?.toLowerCase();
+      if (serialNumber == null || serialNumber.isEmpty || lower == 'unknown' || lower == 'null') {
+        serialNumber = await _posService.readSerialNumber();
+      }
+      if (serialNumber != null && serialNumber.isNotEmpty) {
+        await prefs.setString('serial_number', serialNumber);
+      } else {
+        throw Exception('Device serial number not available.');
+      }
 
       // Submit sale
-      final success = await provider.submitSale(serialNumber);
+      final success = await provider.submitSale(serialNumber: serialNumber);
 
       if (success) {
         if (!mounted) return;

@@ -91,7 +91,7 @@ class _BuffaloTestConnectionScreenState
                 label: Text(_isTesting ? 'Testing...' : 'Test Connection'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BuffaloColors.secondary,
-                  foregroundColor: Colors.black,
+                  foregroundColor: BuffaloColors.textOnSecondary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 16,

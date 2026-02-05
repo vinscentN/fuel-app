@@ -1,44 +1,44 @@
 import 'package:flutter/material.dart';
 
 class BuffaloColors {
-  // Primary Brand Colors - Professional brewing theme
-  static const Color primary = Color(0xFF2C1810); // Dark Brown (rich, professional)
-  static const Color primaryDark = Color(0xFF1A0F0A); // Darker Brown
-  static const Color primaryLight = Color(0xFF4A2818); // Lighter Brown
+  // Primary Brand Colors - modern restaurant look
+  static const Color primary = Color(0xFF172033); // Midnight blue
+  static const Color primaryDark = Color(0xFF0F172A); // Deep navy
+  static const Color primaryLight = Color(0xFF27364D); // Soft navy
 
-  // Secondary/Accent Colors - Amber/Beer tones
-  static const Color secondary = Color(0xFFD97706); // Amber/Golden (like beer)
-  static const Color secondaryDark = Color(0xFFB45309); // Darker Amber
-  static const Color secondaryLight = Color(0xFFF59E0B); // Lighter Amber
+  // Secondary/Accent Colors - vibrant warm CTA
+  static const Color secondary = Color(0xFFE85D04); // Tangerine
+  static const Color secondaryDark = Color(0xFFCC4F03); // Deep tangerine
+  static const Color secondaryLight = Color(0xFFFF7A1A); // Bright orange
 
-  // Tertiary - Complementary professional colors
-  static const Color tertiary = Color(0xFF92400E); // Burnt Orange
-  static const Color tertiaryLight = Color(0xFFC2410C); // Light Burnt Orange
+  // Tertiary - fresh supporting accent
+  static const Color tertiary = Color(0xFF1F9D8B); // Teal
+  static const Color tertiaryLight = Color(0xFF2CB8A3); // Light teal
 
   // Background Colors
-  static const Color background = Color(0xFFF9FAFB); // Very Light Gray
+  static const Color background = Color(0xFFF7F8FC); // Cool light background
   static const Color surface = Color(0xFFFFFFFF); // White
-  static const Color surfaceVariant = Color(0xFFF3F4F6); // Light Gray
+  static const Color surfaceVariant = Color(0xFFEEF2F7); // Soft cool gray
 
   // Text Colors
-  static const Color textPrimary = Color(0xFF111827); // Almost Black
-  static const Color textSecondary = Color(0xFF6B7280); // Gray
-  static const Color textLight = Color(0xFF9CA3AF); // Light Gray
+  static const Color textPrimary = Color(0xFF141B2D); // Ink
+  static const Color textSecondary = Color(0xFF556079); // Slate
+  static const Color textLight = Color(0xFF8C96AC); // Muted slate
   static const Color textOnPrimary = Color(0xFFFFFFFF); // White
-  static const Color textOnSecondary = Color(0xFF1F2937); // Dark Gray
+  static const Color textOnSecondary = Color(0xFFFFFFFF); // White
 
   // Status Colors
-  static const Color success = Color(0xFF059669); // Green
-  static const Color successLight = Color(0xFF10B981);
+  static const Color success = Color(0xFF1E9E5A); // Green
+  static const Color successLight = Color(0xFF35B96F);
   static const Color warning = Color(0xFFF59E0B); // Amber
   static const Color warningLight = Color(0xFFFBBF24);
-  static const Color error = Color(0xFFDC2626); // Red
-  static const Color errorLight = Color(0xFFEF4444);
-  static const Color info = Color(0xFF2563EB); // Blue
+  static const Color error = Color(0xFFE11D48); // Rose red
+  static const Color errorLight = Color(0xFFF43F5E);
+  static const Color info = Color(0xFF2563EB); // Indigo blue
   static const Color infoLight = Color(0xFF3B82F6);
 
   // Card/Product Colors
-  static const Color cardBorder = Color(0xFFE5E7EB);
+  static const Color cardBorder = Color(0xFFDCE3EE);
   static const Color cardShadow = Color(0x1A000000);
 
   // Button Colors
@@ -62,7 +62,7 @@ class BuffaloColors {
   static const LinearGradient headerGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [primary, Color(0xFF3E2723)],
+    colors: [primary, Color(0xFF1E2B45)],
   );
 
   static const LinearGradient accentGradient = LinearGradient(
@@ -79,18 +79,18 @@ class BuffaloColors {
 
   // Material Color Swatch for Theme
   static const MaterialColor primarySwatch = MaterialColor(
-    0xFF2C1810,
+    0xFF172033,
     <int, Color>{
-      50: Color(0xFFF5F3F2),
-      100: Color(0xFFE6E0DE),
-      200: Color(0xFFD5CBC7),
-      300: Color(0xFFC4B5B0),
-      400: Color(0xFFB7A59E),
-      500: Color(0xFF2C1810),
-      600: Color(0xFFA38D83),
-      700: Color(0xFF99817B),
-      800: Color(0xFF8F7673),
-      900: Color(0xFF7D6363),
+      50: Color(0xFFECEFF4),
+      100: Color(0xFFD5DCE8),
+      200: Color(0xFFB8C3D7),
+      300: Color(0xFF9AA9C6),
+      400: Color(0xFF8395B8),
+      500: Color(0xFF172033),
+      600: Color(0xFF141C2D),
+      700: Color(0xFF111827),
+      800: Color(0xFF0E1422),
+      900: Color(0xFF0A0E18),
     },
   );
 }

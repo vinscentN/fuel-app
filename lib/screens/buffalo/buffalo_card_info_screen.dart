@@ -25,10 +25,18 @@ class _BuffaloCardInfoScreenState extends State<BuffaloCardInfoScreen> {
 
     try {
       final buffaloProvider = context.read<BuffaloProvider>();
-
-      // Hardcoded serial number for this POS device
-      final serialNumber = '00085000170';
-      print('DEBUG: Using hardcoded serial number: $serialNumber');
+      final prefs = await SharedPreferences.getInstance();
+      String? serialNumber = prefs.getString('serial_number')?.trim();
+      final lower = serialNumber?.toLowerCase();
+      if (serialNumber == null || serialNumber.isEmpty || lower == 'unknown' || lower == 'null') {
+        serialNumber = await _posService.readSerialNumber();
+      }
+      if (serialNumber != null && serialNumber.isNotEmpty) {
+        await prefs.setString('serial_number', serialNumber);
+      } else {
+        throw Exception('Device serial number not available.');
+      }
+      print('DEBUG: Using device serial number: $serialNumber');
 
       // Submit sale - backend handles product matching
       final success = await buffaloProvider.submitSale(
@@ -301,7 +309,7 @@ class _BuffaloCardInfoScreenState extends State<BuffaloCardInfoScreen> {
                       onPressed: _isProcessing ? null : _processSale,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: BuffaloColors.secondary,
-                        foregroundColor: Colors.black,
+                        foregroundColor: BuffaloColors.textOnSecondary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         textStyle: const TextStyle(
                           fontSize: 18,
@@ -319,7 +327,7 @@ class _BuffaloCardInfoScreenState extends State<BuffaloCardInfoScreen> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.black,
+                                  BuffaloColors.textOnSecondary,
                                 ),
                               ),
                             )

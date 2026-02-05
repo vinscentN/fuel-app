@@ -13,8 +13,10 @@ class BuffaloBalanceScreen extends StatefulWidget {
   State<BuffaloBalanceScreen> createState() => _BuffaloBalanceScreenState();
 }
 
-class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
+class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen>
+    with SingleTickerProviderStateMixin {
   final PosService _posService = PosService();
+  late AnimationController _tapAnimationController;
 
   bool _isReadingCard = false;
   bool _isChecking = false;
@@ -26,10 +28,20 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
   @override
   void initState() {
     super.initState();
+    _tapAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
     // Auto-start card reading when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _readCard();
     });
+  }
+
+  @override
+  void dispose() {
+    _tapAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _autoPrintBalance() async {
@@ -80,16 +92,6 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
             _cardNumber = extractedCardNumber.toString();
             _isReadingCard = false;
           });
-
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Card read successfully - Checking balance...'),
-              backgroundColor: BuffaloColors.success,
-              duration: Duration(seconds: 2),
-            ),
-          );
 
           // Auto-check balance after card read (no PIN required)
           await _checkBalance();
@@ -158,6 +160,197 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_balanceChecked) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Check Balance'),
+          backgroundColor: BuffaloColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Consumer<BuffaloProvider>(
+                  builder: (context, provider, _) {
+                    final balanceResponse = provider.lastBalanceResponse;
+                    final balanceData = balanceResponse?.data;
+                    if (balanceData == null) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: BuffaloColors.warning,
+                              size: 42,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Balance data not available.',
+                              style: TextStyle(
+                                color: BuffaloColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              balanceResponse?.message ?? 'Please tap card again.',
+                              style: const TextStyle(
+                                color: BuffaloColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      color: BuffaloColors.surface,
+                      child: SingleChildScrollView(
+                        child: Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        BuffaloColors.secondary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.account_balance_wallet,
+                                    size: 28,
+                                    color: BuffaloColors.secondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Card Balance',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: BuffaloColors.textSecondary,
+                                        ),
+                                      ),
+                                      if (balanceData.cardholderName != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          balanceData.cardholderName!,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: BuffaloColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Divider(color: BuffaloColors.cardBorder),
+                            const SizedBox(height: 12),
+                            ...balanceData.balances.map((balance) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      balance.currencyCode,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: BuffaloColors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      balance.formatted,
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: BuffaloColors.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            if (balanceData.cardStatus != null) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: BuffaloColors.success.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: BuffaloColors.success,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Status: ${balanceData.cardStatus}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: BuffaloColors.success,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Menu'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: BuffaloColors.primary,
+                    side: BorderSide(color: BuffaloColors.primary, width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Check Balance'),
@@ -170,34 +363,7 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Instructions
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: BuffaloColors.info.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: BuffaloColors.info.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: BuffaloColors.info,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Tap your card to check your balance',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: BuffaloColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
 
             // Card Reading Section
             Text(
@@ -218,29 +384,33 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: BuffaloColors.info,
+                      color: BuffaloColors.secondary,
                       width: 2,
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    color: BuffaloColors.info.withOpacity(0.05),
+                    color: BuffaloColors.secondary.withOpacity(0.05),
                   ),
                   child: Column(
                     children: [
                       if (_isReadingCard)
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              BuffaloColors.info),
+                        RotationTransition(
+                          turns: _tapAnimationController,
+                          child: const Icon(
+                            Icons.contactless,
+                            size: 80,
+                            color: BuffaloColors.secondary,
+                          ),
                         )
                       else
-                        Icon(
+                        const Icon(
                           Icons.contactless,
                           size: 80,
-                          color: BuffaloColors.info,
+                          color: BuffaloColors.secondary,
                         ),
                       const SizedBox(height: 16),
                       Text(
                         _isReadingCard
-                            ? 'Reading card...'
+                            ? 'Waiting for card tap...'
                             : 'Tap here to read card',
                         style: TextStyle(
                           fontSize: 18,
@@ -296,11 +466,13 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
                         setState(() {
                           _cardNumber = null;
                           _balanceChecked = false;
+                          _errorMessage = null;
                         });
+                        _readCard();
                       },
                       icon: Icon(
                         Icons.refresh,
-                        color: BuffaloColors.info,
+                        color: BuffaloColors.secondary,
                       ),
                     ),
                   ],
@@ -342,9 +514,14 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
               Center(
                 child: Column(
                   children: [
-                    const CircularProgressIndicator(
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(BuffaloColors.info),
+                    const SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 5,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(BuffaloColors.secondary),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -356,152 +533,6 @@ class _BuffaloBalanceScreenState extends State<BuffaloBalanceScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 32),
-
-            // Balance Display
-            if (_balanceChecked) ...[
-              const SizedBox(height: 24),
-              Consumer<BuffaloProvider>(
-                builder: (context, provider, _) {
-                  final balanceResponse = provider.lastBalanceResponse;
-                  if (balanceResponse?.data == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final balanceData = balanceResponse!.data!;
-
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    color: BuffaloColors.surface,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: BuffaloColors.secondary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  Icons.account_balance_wallet,
-                                  size: 32,
-                                  color: BuffaloColors.secondary,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Card Balance',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: BuffaloColors.textSecondary,
-                                      ),
-                                    ),
-                                    if (balanceData.cardholderName != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        balanceData.cardholderName!,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: BuffaloColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Divider(color: BuffaloColors.cardBorder),
-                          const SizedBox(height: 16),
-                          ...balanceData.balances.map((balance) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    balance.currencyCode,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: BuffaloColors.textPrimary,
-                                    ),
-                                  ),
-                                  Text(
-                                    balance.formatted,
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: BuffaloColors.secondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          if (balanceData.cardStatus != null) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: BuffaloColors.success.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: BuffaloColors.success,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                'Status: ${balanceData.cardStatus}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: BuffaloColors.success,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to Menu'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BuffaloColors.primary,
-                    side: BorderSide(color: BuffaloColors.primary, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                 ),
               ),
             ],

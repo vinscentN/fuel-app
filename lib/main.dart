@@ -44,15 +44,24 @@ class FuelStationApp extends StatelessWidget {
         title: 'Buffalo Brewing Company',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
+          useMaterial3: true,
           primarySwatch: BuffaloColors.primarySwatch,
           primaryColor: BuffaloColors.primary,
           scaffoldBackgroundColor: BuffaloColors.background,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: BuffaloColors.primary,
+            primary: BuffaloColors.primary,
+            secondary: BuffaloColors.secondary,
+            tertiary: BuffaloColors.tertiary,
+            surface: BuffaloColors.surface,
+            error: BuffaloColors.error,
+          ),
           appBarTheme: const AppBarTheme(
             backgroundColor: BuffaloColors.primary,
             foregroundColor: Colors.white,
             elevation: 1,
           ),
-          textTheme: GoogleFonts.poppinsTextTheme(),
+          textTheme: GoogleFonts.manropeTextTheme(),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               backgroundColor: BuffaloColors.secondary,

@@ -1,11 +1,13 @@
 class BuffaloSaleRequest {
   final String cardNumber;
   final String serialNumber;
+  final int productId;
   final int? mealQuantity;
 
   BuffaloSaleRequest({
     required this.cardNumber,
     required this.serialNumber,
+    required this.productId,
     this.mealQuantity,
   });
 
@@ -13,6 +15,7 @@ class BuffaloSaleRequest {
     final Map<String, dynamic> json = {
       'card_number': cardNumber,
       'serial_number': serialNumber,
+      'product_id': productId,
     };
 
     if (mealQuantity != null) {
