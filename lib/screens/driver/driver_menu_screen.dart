@@ -6,15 +6,40 @@ import '../../utils/colors.dart';
 import '../../constants/api_constants.dart';
 import '../auth/mobile_login_screen.dart';
 import '../common/check_updates_screen.dart';
-import 'site_pickup_scan_screen.dart';
+import '../collections/driver_collections_screen.dart';
 import 'site_selection_screen.dart';
 import 'pending_deliveries_screen.dart';
 import 'warehouse_purchases_screen.dart';
 import 'pending_fill_requests_screen.dart';
 import 'bobtail_orders_screen.dart';
 
-class DriverMenuScreen extends StatelessWidget {
+class DriverMenuScreen extends StatefulWidget {
   const DriverMenuScreen({super.key});
+
+  @override
+  State<DriverMenuScreen> createState() => _DriverMenuScreenState();
+}
+
+class _DriverMenuScreenState extends State<DriverMenuScreen> {
+  bool _checkedAuth = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureLoggedIn());
+  }
+
+  void _ensureLoggedIn() {
+    if (_checkedAuth) return;
+    _checkedAuth = true;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated || auth.currentUser == null) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MobileLoginScreen()),
+        (route) => false,
+      );
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -110,8 +135,8 @@ class DriverMenuScreen extends StatelessWidget {
             children: [
               _buildMenuTile(
                 icon: Icons.receipt_long_rounded,
-                title: 'NEW REFILL ORDERS',
-                subtitle: 'View all pending refill requests',
+                title: 'PURCHASE ORDERS',
+                subtitle: 'View all pending purchase orders',
                 color: const Color(0xFF0EA5E9),
                 onTap: () {
                   Navigator.of(context).push(
@@ -125,12 +150,12 @@ class DriverMenuScreen extends StatelessWidget {
               _buildMenuTile(
                 icon: Icons.qr_code_scanner,
                 title: 'CYLINDER COLLECTION',
-                subtitle: 'Scan to pick cylinders for collection',
+                subtitle: 'View prepared cylinders for pickup',
                 color: const Color(0xFF6366F1),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const SitePickupScanScreen(),
+                      builder: (_) => const DriverCollectionsScreen(),
                     ),
                   );
                 },
@@ -139,7 +164,7 @@ class DriverMenuScreen extends StatelessWidget {
               _buildMenuTile(
                 icon: Icons.inventory_2_outlined,
                 title: 'SUPPLIER PURCHASES',
-                subtitle: 'Record and view warehouse purchases',
+                subtitle: 'Purchasing from Supplier',
                 color: const Color(0xFFFF9800),
                 onTap: () {
                   Navigator.of(context).push(

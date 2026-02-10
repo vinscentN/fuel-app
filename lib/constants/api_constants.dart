@@ -1,11 +1,9 @@
 class ApiConstants {
   // For local testing with physical device, use your computer's local IP
-  // Your current IP: 172.19.74.143
-  //static const String baseUrl = "http://10.107.91.143:8000/api/pos";
 
+  static const String baseUrl = "http://127.0.0.1:8000/api/pos";
+  // static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
 
-  static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
-  // static const String baseUrl = "http://127.0.0.1:8000/api/pos";
 
   // Auth Endpoints
   static const String mobileLogin = "$baseUrl/login";
@@ -36,6 +34,12 @@ class ApiConstants {
 
   // Coupons
   static const String validateCoupon = "$baseUrl/validate-coupon";
+
+  // Site collections
+  static const String siteCollections = "$baseUrl/site-collections";
+  static const String siteCollectionsComplete = "$baseUrl/site-collections/complete";
+  static const String siteCollectionsPendingGrouped = "$baseUrl/site-collections/pending?grouped=1";
+  static const String siteCollectionsPickedUpGrouped = "$baseUrl/site-collections/picked-up?grouped=1";
 
   // Gas Tank Endpoints
   static String gasTanksByStation(String serviceStationId) =>"$baseUrl/gas-tanks/$serviceStationId";

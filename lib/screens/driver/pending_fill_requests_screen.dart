@@ -708,7 +708,7 @@ class _PendingFillRequestsScreenState
           ),
           child: AppBar(
             title: const Text(
-              'New Refill Orders',
+              'Purchase Orders',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,

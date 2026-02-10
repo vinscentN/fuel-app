@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../utils/colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/pos_service.dart';
+import '../auth/mobile_login_screen.dart';
 import '../home/landing_menu_screen.dart';
 
 class DeviceLaunchFailedScreen extends StatefulWidget {
@@ -43,11 +44,14 @@ class _DeviceLaunchFailedScreenState extends State<DeviceLaunchFailedScreen> {
       final ok = await auth.launchDevice(serial);
       if (!mounted) return;
       if (ok) {
-        // Preload products and go to app
+        // Preload products and go to login unless already authenticated
         await auth.ensureProductsLoaded();
         if (!mounted) return;
+        final next = auth.isAuthenticated
+            ? const LandingMenuScreen()
+            : const MobileLoginScreen();
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LandingMenuScreen()),
+          MaterialPageRoute(builder: (_) => next),
           (route) => false,
         );
       } else {

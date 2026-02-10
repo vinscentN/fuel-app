@@ -1,6 +1,8 @@
 import '../constants/api_constants.dart';
 import '../models/gas_tank.dart';
 import '../models/gas_order.dart';
+import '../models/site_collection.dart';
+import '../models/site_collection_group.dart';
 import 'api_client.dart';
 
 class GasOrderService {
@@ -298,6 +300,124 @@ class GasOrderService {
       return response;
     } catch (e) {
       print('[GasOrderService] Error receiving delivery: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches site collections
+  Future<List<SiteCollection>> getSiteCollections(String token) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.siteCollections,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> data = response['data'] as List<dynamic>;
+        return data.map((json) => SiteCollection.fromJson(json)).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('[GasOrderService] Error fetching site collections: $e');
+      rethrow;
+    }
+  }
+
+  /// Creates site collections (attendant prepares)
+  Future<Map<String, dynamic>> createSiteCollections({
+    required int serviceStationId,
+    required int preparedByAttendantId,
+    required String remarks,
+    required List<Map<String, dynamic>> cylinders,
+    required String token,
+  }) async {
+    try {
+      final payload = {
+        'service_station_id': serviceStationId,
+        'prepared_by_attendant_id': preparedByAttendantId,
+        'remarks': remarks,
+        'cylinders': cylinders,
+      };
+
+      final response = await _apiClient.post(
+        ApiConstants.siteCollections,
+        body: payload,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      return response;
+    } catch (e) {
+      print('[GasOrderService] Error creating site collections: $e');
+      rethrow;
+    }
+  }
+
+  /// Completes site collections (driver confirmation)
+  Future<Map<String, dynamic>> completeSiteCollections({
+    required int completedByAttendantId,
+    required List<int> collectionIds,
+    required String token,
+  }) async {
+    try {
+      final payload = {
+        'completed_by_attendant_id': completedByAttendantId,
+        'collection_ids': collectionIds,
+      };
+
+      final response = await _apiClient.post(
+        ApiConstants.siteCollectionsComplete,
+        body: payload,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      return response;
+    } catch (e) {
+      print('[GasOrderService] Error completing site collections: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches grouped pending site collections
+  Future<List<SiteCollectionGroup>> getSiteCollectionsPendingGrouped(String token) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.siteCollectionsPendingGrouped,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> data = response['data'] as List<dynamic>;
+        return data
+            .map((json) => SiteCollectionGroup.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('[GasOrderService] Error fetching grouped pending collections: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches grouped picked-up site collections
+  Future<List<SiteCollectionGroup>> getSiteCollectionsPickedUpGrouped(String token) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.siteCollectionsPickedUpGrouped,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> data = response['data'] as List<dynamic>;
+        return data
+            .map((json) => SiteCollectionGroup.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('[GasOrderService] Error fetching grouped picked-up collections: $e');
       rethrow;
     }
   }

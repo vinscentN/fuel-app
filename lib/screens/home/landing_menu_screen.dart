@@ -6,7 +6,7 @@ import '../../utils/colors.dart';
 import '../../constants/api_constants.dart';
 import '../auth/mobile_login_screen.dart';
 import '../gas_order/select_cylinders_screen.dart';
-import '../gas_order/pending_requests_screen.dart';
+import '../collections/cylinder_collections_screen.dart';
 import '../gas_order/delivery_scan_screen.dart';
 import '../reports/incident_report_screen.dart';
 import '../reports/generator_log_screen.dart';
@@ -22,6 +22,26 @@ class LandingMenuScreen extends StatefulWidget {
 }
 
 class _LandingMenuScreenState extends State<LandingMenuScreen> {
+  bool _checkedAuth = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureLoggedIn());
+  }
+
+  void _ensureLoggedIn() {
+    if (_checkedAuth) return;
+    _checkedAuth = true;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated || auth.currentUser == null) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MobileLoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   Future<void> _handleSale() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final user = auth.currentUser;
@@ -217,13 +237,13 @@ class _MenuList extends StatelessWidget {
       //   },
       // ),
       _MenuItem(
-        title: 'PENDING REQUESTS',
-        subtitle: 'Add cylinders and view QR codes',
-        icon: Icons.qr_code_2,
+        title: 'CYLINDER COLLECTIONS',
+        subtitle: 'Prepare cylinders for collection',
+        icon: Icons.propane_tank_rounded,
         color: const Color(0xFF8B5CF6),
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PendingRequestsScreen()),
+            MaterialPageRoute(builder: (_) => const CylinderCollectionsScreen()),
           );
         },
       ),

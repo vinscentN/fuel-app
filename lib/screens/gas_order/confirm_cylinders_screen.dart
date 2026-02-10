@@ -263,7 +263,7 @@ class _ConfirmCylindersScreenState extends State<ConfirmCylindersScreen> {
                                               ),
                                               const SizedBox(height: 3),
                                               Text(
-                                                '${tank.cylinderType?.name ?? "N/A"} • ${tank.capacity.toStringAsFixed(0)} ${tank.unit}',
+                                                '${tank.cylinderType?.name ?? "TW"} - ${tank.capacity.toStringAsFixed(2)} ${tank.unit}',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[600],
