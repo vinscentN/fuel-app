@@ -7,6 +7,7 @@ import 'providers/fuel_provider.dart';
 import 'providers/payment_provider.dart';
 import 'providers/pos_provider.dart';
 import 'providers/buffalo_provider.dart';
+import 'providers/simba_provider.dart';
 import 'routes/app_routes.dart';
 import 'utils/colors.dart';
 import 'utils/buffalo_colors.dart';
@@ -16,6 +17,7 @@ import 'screens/pos_test_screen.dart';
 import 'screens/home/landing_menu_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/buffalo/buffalo_main_menu_screen.dart';
+import 'screens/simba/simba_landing_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,9 +41,10 @@ class FuelStationApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
         ChangeNotifierProvider(create: (_) => PosProvider()),
         ChangeNotifierProvider(create: (_) => BuffaloProvider()),
+        ChangeNotifierProvider(create: (_) => SimbaProvider()),
       ],
       child: MaterialApp(
-        title: 'Buffalo Brewing Company',
+        title: 'Club Mate POS',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
@@ -101,8 +104,8 @@ class FuelStationApp extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        // Buffalo Brewing Company main menu is the entry point
-        home: const BuffaloMainMenuScreen(),
+        // Club Mate POS landing screen is the entry point
+        home: const SimbaLandingScreen(),
       ),
     );
   }

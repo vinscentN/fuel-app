@@ -706,5 +706,293 @@ class PosProvider extends ChangeNotifier {
     }
   }
 
+  // Simba Product Sale Receipt
+  Future<bool> printSimbaProductReceipt({
+    required String companyName,
+    required String receiptNumber,
+    required String date,
+    required String time,
+    required String cardNo,
+    required String productName,
+    required String quantity,
+    required String unitPrice,
+    required String totalAmount,
+    required String currency,
+    String? balanceBefore,
+    String? balanceAfter,
+    String copyType = 'CUSTOMER COPY',
+  }) async {
+    _setLoading(true);
+    try {
+      final StringBuffer receipt = StringBuffer();
+
+      receipt.writeln(companyName);
+      receipt.writeln('PRODUCT SALE');
+      receipt.writeln(copyType);
+      receipt.writeln('------------------------');
+      receipt.writeln('Receipt: $receiptNumber');
+      receipt.writeln('$date  $time');
+      receipt.writeln('Card: $cardNo');
+      receipt.writeln('========================');
+      receipt.writeln(productName);
+      receipt.writeln('  $quantity x $currency$unitPrice');
+      receipt.writeln('========================');
+      receipt.writeln('TOTAL  $currency$totalAmount');
+
+      if (balanceBefore != null && balanceAfter != null) {
+        receipt.writeln('------------------------');
+        receipt.writeln('Bal Before: $currency$balanceBefore');
+        receipt.writeln('Bal After:  $currency$balanceAfter');
+      }
+
+      receipt.writeln('========================');
+      receipt.writeln('Thank you!');
+      receipt.writeln('');
+
+      final receiptText = receipt.toString();
+
+      await testPrint(
+        stationName: '',
+        address: '',
+        phone: '',
+        date: '',
+        time: '',
+        pumpNo: '',
+        product: '',
+        litres: receiptText,
+        pricePerLitre: '',
+        total: '',
+        payment: '',
+        cardNo: '',
+        authNo: '',
+        rrn: '',
+        operatorName: '',
+      );
+
+      _lastError = null;
+      return true;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = 'Product receipt print failed: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Simba Card Balance Receipt
+  Future<bool> printSimbaBalanceReceipt({
+    required String companyName,
+    required String date,
+    required String time,
+    required String cardNo,
+    required String status,
+    required String currency,
+    required String balance,
+    String? expiryDate,
+  }) async {
+    _setLoading(true);
+    try {
+      final StringBuffer receipt = StringBuffer();
+
+      receipt.writeln(companyName);
+      receipt.writeln('CARD BALANCE ENQUIRY');
+      receipt.writeln('------------------------');
+      receipt.writeln('$date  $time');
+      receipt.writeln('Card: $cardNo');
+      receipt.writeln('Status: $status');
+      if (expiryDate != null) {
+        receipt.writeln('Expiry: $expiryDate');
+      }
+      receipt.writeln('========================');
+      receipt.writeln('BALANCE');
+      receipt.writeln('$currency $balance');
+      receipt.writeln('========================');
+      receipt.writeln('');
+
+      final receiptText = receipt.toString();
+
+      await testPrint(
+        stationName: '',
+        address: '',
+        phone: '',
+        date: '',
+        time: '',
+        pumpNo: '',
+        product: '',
+        litres: receiptText,
+        pricePerLitre: '',
+        total: '',
+        payment: '',
+        cardNo: '',
+        authNo: '',
+        rrn: '',
+        operatorName: '',
+      );
+
+      _lastError = null;
+      return true;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = 'Balance receipt print failed: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Simba Card Top-Up Receipt
+  Future<bool> printSimbaTopUpReceipt({
+    required String companyName,
+    required String receiptNumber,
+    required String date,
+    required String time,
+    required String cardNo,
+    required String amount,
+    required String currency,
+    required String paymentMethod,
+    String? balanceBefore,
+    String? balanceAfter,
+    String copyType = 'CUSTOMER COPY',
+  }) async {
+    _setLoading(true);
+    try {
+      final StringBuffer receipt = StringBuffer();
+
+      receipt.writeln(companyName);
+      receipt.writeln('CARD TOP-UP');
+      receipt.writeln(copyType);
+      receipt.writeln('------------------------');
+      receipt.writeln('Receipt: $receiptNumber');
+      receipt.writeln('$date  $time');
+      receipt.writeln('Card: $cardNo');
+      receipt.writeln('========================');
+      receipt.writeln('Top-Up Amount');
+      receipt.writeln('$currency$amount');
+      receipt.writeln('Payment: $paymentMethod');
+
+      if (balanceBefore != null && balanceAfter != null) {
+        receipt.writeln('------------------------');
+        receipt.writeln('Bal Before: $currency$balanceBefore');
+        receipt.writeln('Bal After:  $currency$balanceAfter');
+      }
+
+      receipt.writeln('========================');
+      receipt.writeln('Thank you!');
+      receipt.writeln('');
+
+      final receiptText = receipt.toString();
+
+      await testPrint(
+        stationName: '',
+        address: '',
+        phone: '',
+        date: '',
+        time: '',
+        pumpNo: '',
+        product: '',
+        litres: receiptText,
+        pricePerLitre: '',
+        total: '',
+        payment: '',
+        cardNo: '',
+        authNo: '',
+        rrn: '',
+        operatorName: '',
+      );
+
+      _lastError = null;
+      return true;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = 'Top-up receipt print failed: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Simba Ticket Purchase Receipt
+  Future<bool> printSimbaTicketReceipt({
+    required String companyName,
+    required String ticketNumber,
+    required String date,
+    required String time,
+    required String eventName,
+    required String venue,
+    required String eventDate,
+    required String ticketType,
+    required String price,
+    required String currency,
+    required String paymentMethod,
+    String? cardNo,
+    String? balanceBefore,
+    String? balanceAfter,
+    String copyType = 'CUSTOMER COPY',
+  }) async {
+    _setLoading(true);
+    try {
+      final StringBuffer receipt = StringBuffer();
+
+      receipt.writeln(companyName);
+      receipt.writeln('EVENT TICKET');
+      receipt.writeln(copyType);
+      receipt.writeln('========================');
+      receipt.writeln('TICKET: $ticketNumber');
+      receipt.writeln('------------------------');
+      receipt.writeln(eventName);
+      receipt.writeln('Venue: $venue');
+      receipt.writeln('Date: $eventDate');
+      receipt.writeln('Type: $ticketType');
+      receipt.writeln('========================');
+      receipt.writeln('PRICE  $currency$price');
+      receipt.writeln('Payment: $paymentMethod');
+
+      if (cardNo != null) {
+        receipt.writeln('Card: $cardNo');
+      }
+
+      if (balanceBefore != null && balanceAfter != null) {
+        receipt.writeln('------------------------');
+        receipt.writeln('Bal Before: $currency$balanceBefore');
+        receipt.writeln('Bal After:  $currency$balanceAfter');
+      }
+
+      receipt.writeln('========================');
+      receipt.writeln('Present this ticket');
+      receipt.writeln('at event entrance');
+      receipt.writeln('');
+
+      final receiptText = receipt.toString();
+
+      await testPrint(
+        stationName: '',
+        address: '',
+        phone: '',
+        date: '',
+        time: '',
+        pumpNo: '',
+        product: '',
+        litres: receiptText,
+        pricePerLitre: '',
+        total: '',
+        payment: '',
+        cardNo: '',
+        authNo: '',
+        rrn: '',
+        operatorName: '',
+      );
+
+      _lastError = null;
+      return true;
+    } catch (e) {
+      _lastResult = null;
+      _lastError = 'Ticket receipt print failed: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
 
 }
