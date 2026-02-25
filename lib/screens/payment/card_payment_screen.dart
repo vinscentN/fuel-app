@@ -254,7 +254,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
       MaterialPageRoute(
         builder: (_) => const CustomerDetailsScreen(
           title: 'Customer Details',
-          subtitle: 'Search for existing customer or add new customer details',
+          subtitle: 'Click Continue to Proceed without Customer Details or Add customer details ',
         ),
       ),
     );

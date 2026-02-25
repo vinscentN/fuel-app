@@ -7,7 +7,9 @@ import '../../utils/colors.dart';
 import 'delivery_qr_code_screen.dart';
 
 class PendingDeliveriesScreen extends StatefulWidget {
-  const PendingDeliveriesScreen({Key? key}) : super(key: key);
+  final String? deliveryType;
+
+  const PendingDeliveriesScreen({Key? key, this.deliveryType}) : super(key: key);
 
   @override
   State<PendingDeliveriesScreen> createState() => _PendingDeliveriesScreenState();
@@ -16,7 +18,7 @@ class PendingDeliveriesScreen extends StatefulWidget {
 class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
   final GasOrderService _gasOrderService = GasOrderService();
 
-  List<PendingGasOrder> _pendingDeliveries = [];
+  List<PendingGasOrder> _filteredDeliveries = [];
   bool _isLoading = true;
   String? _error;
 
@@ -42,8 +44,16 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
 
       final orders = await _gasOrderService.getPendingDeliveries(token);
 
+      final filtered = widget.deliveryType != null
+          ? orders
+              .where((o) =>
+                  (o.customerType ?? '').toUpperCase() ==
+                  widget.deliveryType!.toUpperCase())
+              .toList()
+          : orders;
+
       setState(() {
-        _pendingDeliveries = orders;
+        _filteredDeliveries = filtered;
         _isLoading = false;
       });
     } catch (e) {
@@ -85,7 +95,9 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('New Deliveries'),
+        title: Text(widget.deliveryType != null
+            ? '${widget.deliveryType} DELIVERIES'
+            : 'DELIVERIES'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 1,
@@ -124,7 +136,7 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
                     ],
                   ),
                 )
-              : _pendingDeliveries.isEmpty
+              : _filteredDeliveries.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -160,9 +172,9 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
                       color: AppColors.primary,
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _pendingDeliveries.length,
+                        itemCount: _filteredDeliveries.length,
                         itemBuilder: (context, index) {
-                          final order = _pendingDeliveries[index];
+                          final order = _filteredDeliveries[index];
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 16),

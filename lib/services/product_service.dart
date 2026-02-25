@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
+import 'session_expiry_service.dart';
 
 class ProductService {
   Future<Map<String, dynamic>> fetchProducts(String token) async {
@@ -24,11 +25,13 @@ class ProductService {
     print('[ProductService] Response [${response.statusCode}]: ${response.body}');
 
     if (response.statusCode == 200) {
-      // ✅ decode into Map<String, dynamic>
       return json.decode(response.body) as Map<String, dynamic>;
-    } else {
-      throw Exception("Failed to fetch products (${response.statusCode})");
     }
+    if (response.statusCode == 401) {
+      await SessionExpiryService.handleUnauthorized();
+      throw Exception('Session expired. Please sign in again.');
+    }
+    throw Exception("Failed to fetch products (${response.statusCode})");
   }
 
   Future<Map<String, dynamic>> fetchProductsByStation(String serviceStationId) async {
@@ -50,9 +53,11 @@ class ProductService {
     print('[ProductService] Response [${response.statusCode}]: ${response.body}');
     if (response.statusCode == 200) {
       return json.decode(response.body) as Map<String, dynamic>;
-    } else {
-      throw Exception("Failed to fetch products for station $serviceStationId (${response.statusCode})");
     }
+    if (response.statusCode == 401) {
+      await SessionExpiryService.handleUnauthorized();
+      throw Exception('Session expired. Please sign in again.');
+    }
+    throw Exception("Failed to fetch products for station $serviceStationId (${response.statusCode})");
   }
 }
-

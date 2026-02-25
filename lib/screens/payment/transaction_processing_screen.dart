@@ -32,13 +32,11 @@ class _TransactionProcessingScreenState extends State<TransactionProcessingScree
   late Animation<double> _scaleAnimation;
   late Animation<double> _progressAnimation;
 
-  bool _isProcessing = true;
   int _currentStep = 0;
   final List<String> _steps = [
     'Validating transaction...',
     'Processing payment...',
-    'Printing receipt...',
-    'Finalizing...',
+    'Completing transaction...',
   ];
 
   @override
@@ -103,58 +101,79 @@ class _TransactionProcessingScreenState extends State<TransactionProcessingScree
 
     if (mounted) _updateStep(1);
 
-    final success = await paymentProvider.processPayment(
-      userId: authProvider.currentUser?.id.toString() ?? '0',
-      productId: fuelProvider.selectedProduct!.id,
-      currencyCode: fuelProvider.selectedCurrency!.code,
-      amount: fuelProvider.selectedAmount,
-      quantity: fuelProvider.selectedQuantity,
-      paymentMethod: PaymentMethod.cash,
-      operatorPin: authProvider.currentUser?.id.toString() ?? '0',
-      customerId: widget.customerId,
-      customerData: widget.customerData,
-    );
+    // Add 60-second timeout
+    try {
+      final success = await paymentProvider.processPayment(
+        userId: authProvider.currentUser?.id.toString() ?? '0',
+        productId: fuelProvider.selectedProduct!.id,
+        currencyCode: fuelProvider.selectedCurrency!.code,
+        amount: fuelProvider.selectedAmount,
+        quantity: fuelProvider.selectedQuantity,
+        paymentMethod: PaymentMethod.cash,
+        operatorPin: authProvider.currentUser?.id.toString() ?? '0',
+        customerId: widget.customerId,
+        customerData: widget.customerData,
+      ).timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          throw Exception('Transaction Timed out. Check your Internet connection or ask Admin for Assistance.');
+        },
+      );
 
-    if (success && mounted) {
-      _updateStep(2);
-      await _printReceiptCustomer();
-      if (!mounted) return;
+      if (success && mounted) {
+        _updateStep(2);
+        await _printReceiptCustomer();
+        if (!mounted) return;
 
-      _updateStep(3);
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
+        _spinController.stop();
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (!mounted) return;
 
-      setState(() => _isProcessing = false);
-      _spinController.stop();
-
-      await Future.delayed(const Duration(milliseconds: 800));
-      if (!mounted) return;
-
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const SuccessScreen(
-            title: 'Cash Payment Confirmed!',
-            message: 'Cash transaction completed successfully.',
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const SuccessScreen(
+              title: 'Cash Payment Confirmed!',
+              message: 'Cash transaction completed successfully.',
+            ),
           ),
-        ),
-      );
-    } else if (mounted) {
-      setState(() => _isProcessing = false);
-      _spinController.stop();
+        );
+      } else if (mounted) {
+        _spinController.stop();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(paymentProvider.errorMessage ?? 'Payment validation failed'),
-          backgroundColor: Colors.red[600],
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(paymentProvider.errorMessage ?? 'Payment validation failed'),
+            backgroundColor: Colors.red[600],
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
 
-      await Future.delayed(const Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      }
+    } catch (e) {
+      // Handle timeout and other errors
       if (mounted) {
-        Navigator.of(context).pop();
+        _spinController.stop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red[600],
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       }
     }
   }
@@ -248,47 +267,39 @@ class _TransactionProcessingScreenState extends State<TransactionProcessingScree
     return PopScope(
       canPop: false,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: Colors.white,
         body: SafeArea(
-          // Center ensures the Column stays centered horizontally on any screen size
-          child: Center(
-            child: Consumer3<FuelProvider, PaymentProvider, AuthProvider>(
-              builder: (context, fuelProvider, paymentProvider, authProvider, child) {
-                final product = fuelProvider.selectedProduct;
-                final currency = fuelProvider.selectedCurrency;
-                final unit = _unitShort(product?.unitOfMeasure);
+          child: Consumer3<FuelProvider, PaymentProvider, AuthProvider>(
+            builder: (context, fuelProvider, paymentProvider, authProvider, child) {
+              final product = fuelProvider.selectedProduct;
+              final currency = fuelProvider.selectedCurrency;
 
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                               MediaQuery.of(context).padding.top -
+                               MediaQuery.of(context).padding.bottom,
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
-                    child: Container(
-                      // Constrain width so it looks good on tablets, but full width on phones
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      width: double.infinity,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _buildMainIndicator(),
-                          const SizedBox(height: 40),
-                          _buildDetailsCard(
-                            product: product,
-                            currency: currency,
-                            unit: unit,
-                            fuelProvider: fuelProvider,
-                          ),
-                          const SizedBox(height: 24),
-                          if (_isProcessing) _buildProgressSteps(),
-                          const SizedBox(height: 24),
-                          if (_isProcessing) _buildWarningMessage(),
-                        ],
-                      ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _buildMainIndicator(),
+                        const SizedBox(height: 20),
+                        _buildCompactAmount(currency: currency, fuelProvider: fuelProvider),
+                        const SizedBox(height: 12),
+                        _buildProductName(product: product),
+                        const SizedBox(height: 20),
+                        _buildSimpleProgress(),
+                      ],
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -305,36 +316,36 @@ class _TransactionProcessingScreenState extends State<TransactionProcessingScree
             ScaleTransition(
               scale: _scaleAnimation,
               child: Container(
-                width: 160,
-                height: 160,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: _isProcessing
-                        ? [const Color(0xFF3B82F6).withOpacity(0.2), const Color(0xFF2563EB).withOpacity(0.1)]
-                        : [const Color(0xFF10B981).withOpacity(0.2), const Color(0xFF059669).withOpacity(0.1)],
+                    colors: [
+                      const Color(0xFF3B82F6).withOpacity(0.2),
+                      const Color(0xFF2563EB).withOpacity(0.1),
+                    ],
                   ),
                 ),
               ),
             ),
             Container(
-              width: 140,
-              height: 140,
+              width: 85,
+              height: 85,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: (_isProcessing ? const Color(0xFF3B82F6) : const Color(0xFF10B981)).withOpacity(0.2),
-                    blurRadius: 30,
-                    spreadRadius: 5,
+                    color: const Color(0xFF3B82F6).withOpacity(0.15),
+                    blurRadius: 16,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
-              child: _isProcessing
-                  ? AnimatedBuilder(
+              child: AnimatedBuilder(
                 animation: _spinController,
                 builder: (context, child) {
                   return CustomPaint(
@@ -343,219 +354,118 @@ class _TransactionProcessingScreenState extends State<TransactionProcessingScree
                       color: const Color(0xFF3B82F6),
                     ),
                     child: const Center(
-                      child: Icon(Icons.payments_rounded, size: 60, color: Color(0xFF3B82F6)),
+                      child: Icon(Icons.payments_rounded, size: 38, color: Color(0xFF3B82F6)),
                     ),
                   );
                 },
-              )
-                  : const Center(
-                child: Icon(Icons.check_circle_rounded, size: 80, color: Color(0xFF10B981)),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Text(
-          _isProcessing ? 'Processing Transaction' : 'Transaction Complete!',
+          'Processing Transaction',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: _isProcessing ? const Color(0xFF1E293B) : const Color(0xFF10B981),
+            color: const Color(0xFF1E293B),
           ),
         ),
-        const SizedBox(height: 8),
-        if (_isProcessing)
-          Text(
-            _steps[_currentStep],
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-          )
-        else
-          const Text(
-            'Payment successful',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Color(0xFF10B981), fontWeight: FontWeight.w500),
-          ),
       ],
     );
   }
 
-  Widget _buildDetailsCard({
-    required product,
+  Widget _buildCompactAmount({
     required currency,
-    required String unit,
     required FuelProvider fuelProvider,
   }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primary.withOpacity(0.1), AppColors.primary.withOpacity(0.05)],
-              ),
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'TOTAL AMOUNT',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary.withOpacity(0.7), letterSpacing: 1.5),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(currency?.symbol ?? '', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                    ),
-                    Text(
-                      fuelProvider.selectedAmount.toStringAsFixed(2),
-                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppColors.primary, letterSpacing: -1),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildDetailRow(icon: Icons.local_gas_station_rounded, label: 'Product', value: product?.productName ?? 'N/A', color: const Color(0xFF3B82F6)),
-                const SizedBox(height: 16),
-                _buildDetailRow(icon: Icons.speed_rounded, label: 'Quantity', value: '${fuelProvider.selectedQuantity.toStringAsFixed(2)} $unit', color: const Color(0xFF8B5CF6)),
-                const SizedBox(height: 16),
-                _buildDetailRow(icon: Icons.attach_money_rounded, label: 'Price per $unit', value: '${currency?.symbol ?? ''}${product?.price.toStringAsFixed(2) ?? '0.00'}', color: const Color(0xFFF59E0B)),
-                const SizedBox(height: 16),
-                _buildDetailRow(icon: Icons.payments_rounded, label: 'Payment Method', value: 'CASH', color: const Color(0xFF10B981)),
-                if (widget.customerData != null || widget.customerId != null) ...[
-                  const SizedBox(height: 16),
-                  _buildDetailRow(icon: Icons.person_rounded, label: 'Customer', value: widget.customerData?.name ?? 'Registered Customer', color: const Color(0xFFEC4899)),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow({required IconData icon, required String label, required String value, required Color color}) {
-    return Row(
+    return Column(
       children: [
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [color.withOpacity(0.2), color.withOpacity(0.1)]),
-            borderRadius: BorderRadius.circular(12),
+        Text(
+          'TOTAL AMOUNT',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary.withOpacity(0.7),
+            letterSpacing: 1.2,
           ),
-          child: Icon(icon, color: color, size: 22),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500)),
-              const SizedBox(height: 2),
-              Text(value, style: const TextStyle(fontSize: 16, color: Color(0xFF1E293B), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-            ],
-          ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                currency?.symbol ?? '',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            Text(
+              fuelProvider.selectedAmount.toStringAsFixed(2),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+                letterSpacing: -2,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildProgressSteps() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 2))],
+  Widget _buildProductName({required product}) {
+    return Text(
+      product?.productName ?? 'N/A',
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF64748B),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Progress', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-          const SizedBox(height: 16),
-          ...List.generate(_steps.length, (index) {
-            final isCompleted = index < _currentStep;
-            final isCurrent = index == _currentStep;
-            return Padding(
-              padding: EdgeInsets.only(bottom: index < _steps.length - 1 ? 12 : 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isCompleted ? const Color(0xFF10B981) : isCurrent ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
-                    ),
-                    child: isCompleted
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
-                        : isCurrent ? const Padding(padding: EdgeInsets.all(6), child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white))) : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _steps[index],
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
-                        color: isCompleted || isCurrent ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
+      textAlign: TextAlign.center,
     );
   }
 
-  Widget _buildWarningMessage() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.orange.shade50, Colors.amber.shade50]),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.shade200, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
-            child: Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+  Widget _buildSimpleProgress() {
+    return Column(
+      children: [
+        Text(
+          _steps[_currentStep],
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Please wait. Do not close or navigate away.',
-              style: TextStyle(fontSize: 13, color: Colors.orange.shade900, fontWeight: FontWeight.w600),
-            ),
+        ),
+        const SizedBox(height: 12),
+        const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Please wait. Do not close this screen.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.orange.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

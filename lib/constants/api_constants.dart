@@ -1,10 +1,7 @@
 class ApiConstants {
   // For local testing with physical device, use your computer's local IP
-
-  static const String baseUrl = "http://127.0.0.1:8000/api/pos";
-  // static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
-
-
+  static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
+  //static const String baseUrl = "http://127.0.0.1:8000/api/pos";
   // Auth Endpoints
   static const String mobileLogin = "$baseUrl/login";
   static const String login = "$baseUrl/login";
@@ -47,4 +44,20 @@ class ApiConstants {
 
   // Customer Endpoints
   static const String customers = "$baseUrl/customers";
+
+  // Delivery Order Endpoints
+  static const String deliveryOrdersAssigned = "$baseUrl/delivery-orders/assigned";
+  static const String deliveryOrdersHome = "$baseUrl/delivery-orders/home/assigned";
+  static const String deliveryOrdersCommercial = "$baseUrl/delivery-orders/commercial/assigned";
+  static const String deliveryOrdersSite = "$baseUrl/delivery-orders/site/assigned";
+  static String deliveryOrderUpdateStatus(int id) =>
+      "$baseUrl/delivery-orders/$id/status";
+  static String deliveryOrderUpdateItemWeight(int orderId, int itemId) =>
+      "$baseUrl/delivery-orders/$orderId/items/$itemId/actual-weight";
+
+  // Swap assignment endpoints
+  static String swapAssignments(int orderId) =>
+      "$baseUrl/delivery-orders/$orderId/swap-assignments";
+  static String swapAssignmentReturn(int orderId, int assignmentId) =>
+      "$baseUrl/delivery-orders/$orderId/swap-assignments/$assignmentId/return";
 }

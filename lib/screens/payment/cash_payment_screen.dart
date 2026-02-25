@@ -341,13 +341,13 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
         final unit = _unitShort(fuel.selectedProduct?.unitOfMeasure);
         await pos.printReceiptCopy(
           copyType: 'CUSTOMER COPY',
-          stationName: (r['stationName'] ?? auth.currentUser?.serviceStationName ?? 'Fuel Station').toString(),
+          stationName: (r['stationName'] ?? auth.currentUser?.serviceStationName ?? 'GASMAN').toString(),
           address: (r['address'] ?? '').toString(),
           phone: (r['phone'] ?? '').toString(),
           date: (r['date'] ?? '').toString(),
           time: (r['time'] ?? '').toString(),
           pumpNo: (r['pumpNo'] ?? '1').toString(),
-          product: (r['product'] ?? fuel.selectedProduct?.productName ?? 'Fuel').toString(),
+          product: (r['product'] ?? fuel.selectedProduct?.productName ?? 'LPG GAS').toString(),
           unit: unit,
           litres: (r['litres'] ?? fuel.selectedQuantity.toStringAsFixed(2)).toString(),
           pricePerLitre: (r['pricePerLitre'] ?? fuel.selectedProduct?.price.toStringAsFixed(2) ?? '0.00').toString(),

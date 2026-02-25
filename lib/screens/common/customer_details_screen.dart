@@ -34,6 +34,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
   bool _showNewCustomerForm = false;
   bool _showSearchResults = false;
   bool _isProcessing = false;
+  bool _showCustomerCapture = false;
 
   @override
   void dispose() {
@@ -141,6 +142,7 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
       _selectedCustomer = customer;
       _showSearchResults = false;
       _showNewCustomerForm = false;
+      _showCustomerCapture = true;
       _populateCustomerData(customer);
     });
   }
@@ -249,6 +251,49 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
+
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _isProcessing ? null : _skipCustomerDetails,
+                  icon: const Icon(Icons.arrow_forward, size: 22),
+                  label: const Text(
+                    'Continue',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Card(
+                elevation: 0.5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey[300]!),
+                ),
+                child: ExpansionTile(
+                  initiallyExpanded: _showCustomerCapture,
+                  onExpansionChanged: (expanded) {
+                    setState(() => _showCustomerCapture = expanded);
+                  },
+                  title: const Text(
+                    'Add customer details (optional)',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Search existing customer or create a new one',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  children: [
 
               // Search section header
               const Text(
@@ -370,47 +415,6 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                       ),
               ),
 
-              const SizedBox(height: 16),
-
-              // Continue without customer button (default, always visible)
-              if (!showConfirmButton) ...[
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: _isProcessing ? null : _skipCustomerDetails,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue[700],
-                      side: BorderSide(color: Colors.blue[300]!, width: 1.5),
-                      backgroundColor: Colors.blue[50],
-                      disabledForegroundColor: Colors.blue[400],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.person_off_outlined,
-                          size: 20,
-                          color: _isProcessing ? Colors.blue[400] : Colors.blue[700],
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Continue without customer',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: _isProcessing ? Colors.blue[400] : Colors.blue[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-
               const SizedBox(height: 24),
 
               // Multiple search results
@@ -429,12 +433,15 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                         children: [
                           Icon(Icons.people, color: Colors.blue.shade700, size: 28),
                           const SizedBox(width: 12),
-                          Text(
-                            'Found ${_searchResults.length} Customer(s)',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                          Expanded(
+                            child: Text(
+                              'Found ${_searchResults.length} Customer(s)',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -540,12 +547,15 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                         children: [
                           Icon(Icons.check_circle, color: Colors.green.shade700, size: 28),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Customer Found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                          const Expanded(
+                            child: Text(
+                              'Customer Found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -575,12 +585,15 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                         children: [
                           Icon(Icons.person_add, color: Colors.blue.shade700, size: 28),
                           const SizedBox(width: 12),
-                          const Text(
-                            'New Customer',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                          const Expanded(
+                            child: Text(
+                              'New Customer',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -717,12 +730,16 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                                 size: 22,
                               ),
                               const SizedBox(width: 12),
-                              const Text(
-                                'Confirm & Continue',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
+                              const Flexible(
+                                child: Text(
+                                  'Use Customer & Continue',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
                                 ),
                               ),
                             ],
@@ -730,6 +747,10 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                   ),
                 ),
               ],
+
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 16),
 

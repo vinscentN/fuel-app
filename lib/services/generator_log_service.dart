@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
+import 'session_expiry_service.dart';
 
 class GeneratorLogService {
   /// Submit a generator usage log
@@ -10,7 +11,7 @@ class GeneratorLogService {
     required String notes,
     required String token,
   }) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}/pos/generator-logs');
+    final url = Uri.parse('${ApiConstants.baseUrl}/generator-logs');
 
     print('[GeneratorLogService] POST: ${url.toString()}');
     print('[GeneratorLogService] Request body: {start_time: $startTime, end_time: $endTime, notes: $notes}');
@@ -34,6 +35,9 @@ class GeneratorLogService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        await SessionExpiryService.handleUnauthorized();
+        throw Exception('Session expired. Please sign in again.');
       } else {
         throw Exception('Failed to submit generator log (${response.statusCode}): ${response.body}');
       }
@@ -84,6 +88,9 @@ class GeneratorLogService {
           return List<Map<String, dynamic>>.from(data['data']);
         }
         return [];
+      } else if (response.statusCode == 401) {
+        await SessionExpiryService.handleUnauthorized();
+        throw Exception('Session expired. Please sign in again.');
       } else {
         throw Exception('Failed to fetch generator logs (${response.statusCode}): ${response.body}');
       }

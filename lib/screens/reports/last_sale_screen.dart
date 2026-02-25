@@ -47,7 +47,7 @@ class _LastSaleScreenState extends State<LastSaleScreen> {
         time: (d['time'] ?? '').toString(),
         pumpNo: (d['pumpNo'] ?? '').toString(),
         product: (d['product'] ?? '').toString(),
-        unit: 'L',
+        unit: 'Kg',
         litres: (d['litres'] ?? '').toString(),
         pricePerLitre: (d['pricePerLitre'] ?? '').toString(),
         total: (d['total'] ?? '').toString(),
@@ -113,14 +113,12 @@ class _LastSaleScreenState extends State<LastSaleScreen> {
                 const Text('LAST SALE TRANSACTION', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 _row('Station', (d['stationName'] ?? '').toString()),
-                _row('Address', (d['address'] ?? '').toString()),
-                _row('Phone', (d['phone'] ?? '').toString()),
                 _row('Date', (d['date'] ?? '').toString()),
                 _row('Time', (d['time'] ?? '').toString()),
-                _row('Pump', (d['pumpNo'] ?? '').toString()),
+                _row('Serial Number', (d['pumpNo'] ?? '').toString()),
                 _row('Product', (d['product'] ?? '').toString()),
-                _row('Litres', (d['litres'] ?? '').toString()),
-                _row('Price/L', (d['pricePerLitre'] ?? '').toString()),
+                _row('Kgs', (d['litres'] ?? '').toString()),
+                _row('Price/Kg', (d['pricePerLitre'] ?? '').toString()),
                 _row('Total', (d['total'] ?? '').toString()),
                 _row('Payment', (d['payment'] ?? '').toString()),
                 _row('Card', (d['cardNo'] ?? '').toString()),
@@ -147,4 +145,3 @@ class _LastSaleScreenState extends State<LastSaleScreen> {
     );
   }
 }
-

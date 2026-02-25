@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
+import 'session_expiry_service.dart';
 
 class IncidentReportService {
   /// Submit an incident report
@@ -32,6 +33,9 @@ class IncidentReportService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        await SessionExpiryService.handleUnauthorized();
+        throw Exception('Session expired. Please sign in again.');
       } else {
         throw Exception('Failed to submit incident report (${response.statusCode}): ${response.body}');
       }

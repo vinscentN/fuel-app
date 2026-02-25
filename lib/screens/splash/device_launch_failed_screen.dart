@@ -35,7 +35,8 @@ class _DeviceLaunchFailedScreenState extends State<DeviceLaunchFailedScreen> {
       final serial = await _pos.readSerialNumber();
       if (serial == null || serial.isEmpty) {
         setState(() {
-          _message = 'Device serial number not available';
+          _message =
+              'Device Launch Failed — It seems this device is not configured on the platform. Please contact Administrator.';
           _loading = false;
         });
         return;
@@ -61,8 +62,9 @@ class _DeviceLaunchFailedScreenState extends State<DeviceLaunchFailedScreen> {
         });
       }
     } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _message = 'Retry failed: $e';
+        _message = msg;
         _loading = false;
       });
     }

@@ -550,7 +550,7 @@ class _CouponRedemptionScreenState extends State<CouponRedemptionScreen>
           isOutlined: true,
           backgroundColor: AppColors.textSecondary,
           child: const Text(
-            'Back to Dashboard',
+            'Back to New Sale',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,

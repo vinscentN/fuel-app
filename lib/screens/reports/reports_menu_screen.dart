@@ -3,6 +3,8 @@ import '../../utils/colors.dart';
 import 'batch_cutoff_screen.dart';
 import 'batch_audit_screen.dart';
 import 'last_sale_screen.dart';
+import 'incident_report_screen.dart';
+import 'generator_log_screen.dart';
 
 class ReportsMenuScreen extends StatelessWidget {
   const ReportsMenuScreen({super.key});
@@ -27,7 +29,7 @@ class ReportsMenuScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const BatchCutoffScreen()),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _tile(
             context,
             icon: Icons.receipt_long_outlined,
@@ -37,7 +39,7 @@ class ReportsMenuScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const LastSaleScreen()),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _tile(
             context,
             icon: Icons.list_alt_outlined,
@@ -47,13 +49,25 @@ class ReportsMenuScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const BatchAuditScreen()),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _tile(
             context,
-            icon: Icons.undo_outlined,
-            title: 'Reversals',
-            subtitle: 'View reversed or voided transactions',
-            onTap: () => _comingSoon(context),
+            icon: Icons.report_problem_outlined,
+            title: 'Incident Reports',
+            subtitle: 'Report issues at your station',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const IncidentReportScreen()),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _tile(
+            context,
+            icon: Icons.power_outlined,
+            title: 'Generator Usage',
+            subtitle: 'Track generator running times',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const GeneratorLogScreen()),
+            ),
           ),
         ],
       ),
@@ -66,24 +80,31 @@ class ReportsMenuScreen extends StatelessWidget {
       required String subtitle,
       required VoidCallback onTap}) {
     return Card(
-      elevation: 3,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
+        dense: true,
+        visualDensity: const VisualDensity(vertical: -1),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         leading: CircleAvatar(
+          radius: 18,
           backgroundColor: AppColors.primary.withOpacity(0.08),
-          child: Icon(icon, color: AppColors.primary),
+          child: Icon(icon, color: AppColors.primary, size: 18),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 12),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 20),
         onTap: onTap,
       ),
-    );
-  }
-
-  void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Coming soon')),
     );
   }
 }

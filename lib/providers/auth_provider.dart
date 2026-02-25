@@ -209,14 +209,45 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
       // Not successful -> surface message
-      _setError(ErrorUtils.extractErrorMessage(resp, fallback: 'Device launch failed'));
+      final rawMsg = ErrorUtils.extractErrorMessage(resp,
+          fallback: 'Device launch failed');
+      _setError(_friendlyLaunchError(rawMsg));
       return false;
     } catch (e) {
-      _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Device launch failed'));
+      final rawMsg =
+          ErrorUtils.extractErrorMessage(e, fallback: 'Device launch failed');
+      _setError(_friendlyLaunchError(rawMsg));
       return false;
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Maps raw device-launch error messages to clear, user-friendly text.
+  String _friendlyLaunchError(String raw) {
+    final lower = raw.toLowerCase();
+    // Connectivity / timeout (already set by ApiClient)
+    if (lower.contains('lost internet') ||
+        lower.contains('internet connection') ||
+        lower.contains('connection') ||
+        lower.contains('timeout') ||
+        lower.contains('socket') ||
+        lower.contains('network')) {
+      return 'The device lost internet connection and failed to finish the process.';
+    }
+    // Device not registered / not found on the platform
+    if (lower.contains('not found') ||
+        lower.contains('not configured') ||
+        lower.contains('not registered') ||
+        lower.contains('no device') ||
+        lower.contains('unrecognized') ||
+        lower.contains('invalid serial') ||
+        lower.contains('serial') ||
+        lower.contains('404')) {
+      return 'Device Launch Failed — It seems this device is not configured on the platform. Please contact Administrator.';
+    }
+    // Return the original message if it doesn't match known patterns
+    return raw;
   }
 
   // New: fetch products by service station id without auth token
@@ -314,19 +345,26 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await _authService.logout(_token);
-
-      _currentUser = null;
-      _token = null;
-      _products = [];
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('token');
-      await prefs.remove('user');
+      await clearLocalSession();
     } catch (e) {
       _setError(ErrorUtils.extractErrorMessage(e, fallback: 'Logout failed'));
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Clears local auth/session data without calling backend logout endpoint.
+  Future<void> clearLocalSession() async {
+    _currentUser = null;
+    _token = null;
+    _products = [];
+    _selectedProduct = null;
+    _errorMessage = null;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('user');
+    notifyListeners();
   }
 
   /// Restore session on app start

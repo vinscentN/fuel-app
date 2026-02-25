@@ -5,7 +5,9 @@
       "Bash(./gradlew clean:*)",
       "Bash(flutter build:*)",
       "Bash(dir:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(echo:*)",
+      "Bash(\"C:\\Users\\HomePC\\StudioProjects\\gas-man\\lib\\models\\delivery_order.dart\")"
     ],
     "deny": [],
     "ask": []

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/delivery_order.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pos_provider.dart';
 import '../../services/delivery_order_service.dart';
-import '../../utils/colors.dart';
+import 'delivery_complete_screen.dart';
 
 class DeliveryOrderDetailsScreen extends StatefulWidget {
   final DeliveryOrder order;
@@ -25,32 +24,186 @@ class _DeliveryOrderDetailsScreenState
   final DeliveryOrderService _service = DeliveryOrderService();
   bool _isSubmitting = false;
 
-  Color _statusColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'PENDING':
-        return Colors.orange;
-      case 'PROCESSING':
-        return Colors.blue;
-      case 'DISPATCHED':
-        return Colors.indigo;
-      case 'IN_TRANSIT':
-        return Colors.blue;
-      case 'DELIVERED':
-        return Colors.green;
-      case 'CANCELLED':
-        return Colors.red;
-      default:
-        return Colors.grey;
+  // Controllers for editable current weight per item
+  late final List<TextEditingController> _weightControllers;
+  // Track which items have unsaved changes
+  late final List<bool> _weightDirty;
+  // Track which items are currently saving
+  late final List<bool> _weightSaving;
+  // Accordion: which index is expanded (-1 = none)
+  int _expandedIndex = -1;
+
+  // ── Swap cylinder return state (home deliveries only) ────────────
+  List<SwapCylinder> _swapAssignments = [];
+  bool _swapLoading = false;
+  // assignmentId → true while the return API call is in progress
+  final Map<int, bool> _returningId = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final items = widget.order.items;
+    _weightControllers = items
+        .map((item) =>
+            TextEditingController(text: item.currentWeight.toStringAsFixed(2)))
+        .toList();
+    _weightDirty = List.filled(items.length, false);
+    _weightSaving = List.filled(items.length, false);
+
+    for (int i = 0; i < _weightControllers.length; i++) {
+      final idx = i;
+      _weightControllers[idx].addListener(() {
+        final changed = _weightControllers[idx].text !=
+            widget.order.items[idx].currentWeight.toStringAsFixed(2);
+        if (_weightDirty[idx] != changed) {
+          setState(() => _weightDirty[idx] = changed);
+        }
+      });
+    }
+
+    // For home deliveries, load live swap assignments
+    if (widget.order.typeLabel == 'HOME') {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadSwapAssignments());
     }
   }
 
-  String _formatDate(DateTime? dateTime) {
-    if (dateTime == null) return 'N/A';
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
-    return dateFormat.format(dateTime);
+  Future<void> _loadSwapAssignments() async {
+    final token =
+        Provider.of<AuthProvider>(context, listen: false).token ?? '';
+    setState(() => _swapLoading = true);
+    try {
+      final list = await _service.getSwapAssignments(
+        orderId: widget.order.id,
+        token: token,
+      );
+      if (mounted) setState(() => _swapAssignments = list);
+    } catch (_) {
+      // Fall back to the swap cylinders embedded in the order
+      if (mounted) {
+        setState(() =>
+            _swapAssignments = List.from(widget.order.swapCylinders));
+      }
+    } finally {
+      if (mounted) setState(() => _swapLoading = false);
+    }
+  }
+
+  Future<void> _markReturned(SwapCylinder swap) async {
+    final token =
+        Provider.of<AuthProvider>(context, listen: false).token ?? '';
+    setState(() => _returningId[swap.assignmentId] = true);
+    try {
+      final updated = await _service.markSwapReturned(
+        orderId: widget.order.id,
+        assignmentId: swap.assignmentId,
+        token: token,
+      );
+      if (mounted) {
+        setState(() {
+          final idx = _swapAssignments
+              .indexWhere((s) => s.assignmentId == swap.assignmentId);
+          if (idx != -1) _swapAssignments[idx] = updated;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _returningId.remove(swap.assignmentId));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _weightControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _saveWeight(int index) async {
+    final token =
+        Provider.of<AuthProvider>(context, listen: false).token ?? '';
+    final newWeight =
+        double.tryParse(_weightControllers[index].text.trim());
+
+    if (newWeight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid weight value'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _weightSaving[index] = true);
+    try {
+      await _service.updateItemCurrentWeight(
+        orderId: widget.order.id,
+        itemId: widget.order.items[index].id,
+        currentWeight: newWeight,
+        token: token,
+      );
+      if (mounted) {
+        setState(() {
+          _weightDirty[index] = false;
+          _weightSaving[index] = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Weight updated'),
+            backgroundColor: Color(0xFF10B981),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _weightSaving[index] = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmDelivery() async {
+    // If any weights are still dirty, prompt the driver
+    if (_weightDirty.any((d) => d)) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Unsaved weight changes'),
+          content: const Text(
+              'Some cylinder weights have not been saved. Confirm delivery anyway?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white),
+              child: const Text('Confirm Anyway'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
@@ -58,12 +211,25 @@ class _DeliveryOrderDetailsScreenState
       final token = authProvider.token;
       final user = authProvider.currentUser;
 
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
+      if (token == null) throw Exception('Not authenticated');
+      if (user == null) throw Exception('User not found');
 
-      if (user == null) {
-        throw Exception('User not found');
+      // Build cylinders payload from controller values
+      final cylinders = <Map<String, dynamic>>[];
+      for (int i = 0; i < widget.order.items.length; i++) {
+        final item = widget.order.items[i];
+        final actualWeight =
+            double.tryParse(_weightControllers[i].text.trim()) ??
+                item.currentWeight;
+        final entry = <String, dynamic>{
+          'item_id': item.id,
+          'actual_weight': actualWeight,
+        };
+        // Include bottom_edge_weight if available
+        if (item.bottomEdgeWeight > 0) {
+          entry['bottom_edge_weight'] = item.bottomEdgeWeight;
+        }
+        cylinders.add(entry);
       }
 
       final updatedOrder = await _service.updateDeliveryStatus(
@@ -71,11 +237,23 @@ class _DeliveryOrderDetailsScreenState
         status: 'DELIVERED',
         assignedDriverId: user.id,
         token: token,
+        cylinders: cylinders,
       );
 
       if (mounted) {
-        await _printReceipt(updatedOrder);
-        Navigator.of(context).pop(true);
+        final receiptData = _buildReceiptData(updatedOrder);
+        final posProvider =
+            Provider.of<PosProvider>(context, listen: false);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => DeliveryCompleteScreen(
+              order: updatedOrder,
+              receiptData: receiptData,
+              posProvider: posProvider,
+              onPrint: _doPrint,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -93,269 +271,1276 @@ class _DeliveryOrderDetailsScreenState
     }
   }
 
-  Future<void> _printReceipt(DeliveryOrder order) async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final posProvider = Provider.of<PosProvider>(context, listen: false);
-      final now = DateTime.now();
-      final dateFormatter = DateFormat('dd/MM/yyyy');
-      final timeFormatter = DateFormat('HH:mm:ss');
+  /// Build all receipt field values from [order] — does NOT call print.
+  Map<String, String> _buildReceiptData(DeliveryOrder order) {
+    final now = DateTime.now();
+    final date =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
 
-      final customerName = order.customer?.name ?? 'Customer';
-      final customerPhone = order.customer?.phone ?? '';
-      final address = order.location?.fullAddress ?? '';
-      final items = order.items
-          .map((item) {
-            final name = item.product?.name ?? 'Item';
-            final quantity = item.quantity;
-            final unit = item.product?.unitOfMeasure ?? '';
-            return '$name: $quantity $unit';
-          })
-          .join('\n');
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isHome   = order.typeLabel == 'HOME';
+    final isRetail = !isHome; // retail, commercial, and site all use technical cylinder details
 
-      await posProvider.printDeliveryReceipt(
-        requestCode: 'ORDER-${order.id}',
-        deliveryCode: 'DELIVERY-${order.id}',
-        invoiceNumber: 'N/A',
-        stationName: customerName,
-        address: address,
-        phone: customerPhone,
-        date: dateFormatter.format(now),
-        time: timeFormatter.format(now),
-        driverName: authProvider.currentUser?.fullName ?? 'N/A',
-        cylinderCount: order.items.length.toString(),
-        cylinderDetails: items,
-        description: order.notes ?? '',
-        siteName: customerName,
-        siteCode: order.location?.label ?? 'N/A',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Print failed: ${e.toString()}'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+    final siteName = order.customer?.name ?? order.site?.name ?? 'N/A';
+
+    // Map original item ids → controller index
+    final itemIdToIndex = {
+      for (int i = 0; i < widget.order.items.length; i++)
+        widget.order.items[i].id: i,
+    };
+
+    // Invoice number — first item that has one
+    String invoiceNumber = 'N/A';
+    for (final item in order.items) {
+      if (item.invoiceNumber != null && item.invoiceNumber!.isNotEmpty) {
+        invoiceNumber = item.invoiceNumber!;
+        break;
       }
     }
+
+    // Total KGs delivered — use expectedKg for bobtail, product weight sum otherwise
+    final totalKgsValue = order.hasBobtail
+        ? (order.expectedKg ?? order.totalKg ?? order.totalKgsLoaded)
+        : order.totalKgsLoaded;
+    final totalKgs = totalKgsValue.toStringAsFixed(2);
+
+    final customerName = order.customer?.name ?? order.site?.name ?? 'N/A';
+
+    // Combine swap sources: embedded in order + live-loaded assignments
+    final swaps = [
+      ...order.swapCylinders,
+      ..._swapAssignments.where(
+          (s) => !order.swapCylinders.any((o) => o.assignmentId == s.assignmentId)),
+    ];
+
+    // ── Helper: resolve serial for an item ──────────────────────────
+    String resolveSerial(DeliveryOrderItem item, int idx) {
+      String serial = item.trackingCode;
+      if ((serial.isEmpty || serial == 'N/A') &&
+          (item.serial?.isNotEmpty ?? false)) {
+        serial = item.serial!;
+      }
+      if ((serial.isEmpty || serial == 'N/A') && swaps.isNotEmpty) {
+        serial = idx < swaps.length ? swaps[idx].serial : swaps[0].serial;
+      }
+      return serial;
+    }
+
+    final grandTotal =
+        order.items.fold<double>(0, (sum, i) => sum + i.total);
+
+    // ── Customer/home receipt lines: serial, unit price, qty, amount ─
+    final homeItemLines = order.items.asMap().entries.map((e) {
+      final serial    = resolveSerial(e.value, e.key);
+      final qty       = e.value.kgsLoaded.toStringAsFixed(2);
+      final unitPrice = e.value.unitPrice.toStringAsFixed(2);
+      final lineTotal = e.value.total.toStringAsFixed(2);
+      return 'Serial: $serial\n'
+             '  Qty: $qty kg  @  \$$unitPrice/kg\n'
+             '  Amount: \$$lineTotal';
+    }).join('\n---\n');
+
+    final homeDetails = order.items.isEmpty
+        ? 'Total KGs Delivered: $totalKgs kg'
+        : '$homeItemLines\n===\nTotal KGs: $totalKgs kg\n'
+          'TOTAL: \$${grandTotal.toStringAsFixed(2)}';
+
+    // ── Driver/technical cylinder details ──────────────────────────
+    // Home: same serial/qty/price/total format (driver carries the same info)
+    // Retail/commercial/site: bottom edge, product weight, current weight
+    final itemLines = isRetail
+        ? order.items.map((item) {
+            final serial     = resolveSerial(item, order.items.indexOf(item));
+            final botEdge    = item.bottomEdgeWeight.toStringAsFixed(2);
+            final prodWeight = item.kgsLoaded.toStringAsFixed(2);
+            final ctrlIdx    = itemIdToIndex[item.id];
+            final currWeight = ctrlIdx != null
+                ? (double.tryParse(_weightControllers[ctrlIdx].text.trim())
+                        ?.toStringAsFixed(2) ??
+                    item.currentWeight.toStringAsFixed(2))
+                : item.currentWeight.toStringAsFixed(2);
+            return 'Serial: $serial\n'
+                   '  Bottom Edge:    $botEdge kg\n'
+                   '  Product Weight: $prodWeight kg\n'
+                   '  Current Weight: $currWeight kg';
+          }).join('\n---\n')
+        : homeItemLines; // home driver copy = same as customer copy
+
+    final cylinderDetails = isHome
+        ? homeDetails
+        : '$itemLines\n===\nTotal KGs Delivered: $totalKgs kg';
+
+    // Customer copy details (home = homeDetails; retail = same as cylinderDetails)
+    final customerCylinderDetails = isHome ? homeDetails : cylinderDetails;
+
+    return {
+      'requestCode':             'ORDER-${order.id}',
+      'deliveryCode':            'DELIVERY-${order.id}',
+      'invoiceNumber':           invoiceNumber,
+      // Home deliveries: no centered station name — the "Customer:" line covers it.
+      // Retail/site: print site name centered at top.
+      'stationName':             isHome ? '' : siteName,
+      'address':                 order.deliveryAddress,
+      'phone':                   order.customer?.phone ?? '',
+      'date':                    date,
+      'time':                    time,
+      'driverName':              authProvider.currentUser?.fullName ?? 'N/A',
+      'cylinderCount':           order.items.length.toString(),
+      'cylinderDetails':         cylinderDetails,
+      'customerCylinderDetails': customerCylinderDetails,
+      'customerName':            customerName,
+      'description':             order.notes ?? order.typeLabel,
+      // Home: siteName = customer name (printed as "Customer: X", stationName is blank)
+      // Retail/site: siteName is blank because stationName already prints the name centred at top
+      'siteName':                isHome ? customerName : '',
+      'detailsLabel':            order.hasBobtail ? 'BOBTAIL DETAILS' : 'CYLINDER DETAILS',
+      'recipientLabel':          isHome ? 'Customer' : 'Site',
+    };
   }
+
+  Future<void> _doPrint(
+      Map<String, String> data, String copyType, PosProvider posProvider,
+      {String? cylinderDetailsOverride}) async {
+    await posProvider.printDeliveryReceipt(
+      requestCode:     data['requestCode']!,
+      deliveryCode:    data['deliveryCode']!,
+      invoiceNumber:   data['invoiceNumber']!,
+      stationName:     data['stationName']!,
+      address:         data['address']!,
+      phone:           data['phone']!,
+      date:            data['date']!,
+      time:            data['time']!,
+      driverName:      data['driverName']!,
+      cylinderCount:   data['cylinderCount']!,
+      cylinderDetails: cylinderDetailsOverride ?? data['cylinderDetails']!,
+      description:     data['description']!,
+      siteName:        data['siteName']!,
+      copyType:        copyType,
+      detailsLabel:    data['detailsLabel'] ?? 'CYLINDER DETAILS',
+      recipientLabel:  data['recipientLabel'] ?? 'Customer',
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Palette
+  // ─────────────────────────────────────────────────────────────────
+  static const _navy   = Color(0xFF1C2B4A);
+  static const _blue   = Color(0xFF2563EB);
+  static const _amber  = Color(0xFFD97706);
+  static const _green  = Color(0xFF16A34A);
+  static const _bg     = Color(0xFFF5F7FA);
+  static const _border = Color(0xFFE2E8F0);
+  static const _text   = Color(0xFF1E293B);
+  static const _muted  = Color(0xFF64748B);
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(widget.order.status);
-    final customerName = widget.order.customer?.name ?? 'Customer';
-    final address = widget.order.location?.fullAddress ?? 'N/A';
+    final order = widget.order;
+    final count = order.items.length;
+    final hasDirty = _weightDirty.any((d) => d);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _bg,
       appBar: AppBar(
-        title: const Text('Delivery Details'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: _navy,
         foregroundColor: Colors.white,
-        elevation: 1,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+        elevation: 0,
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            Text(order.recipientName,
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                overflow: TextOverflow.ellipsis),
+            Text(order.deliveryAddress,
+                style:
+                    const TextStyle(fontSize: 11, color: Colors.white54),
+                overflow: TextOverflow.ellipsis),
+          ],
+        ),
+        actions: [
+          if (order.hasBobtail)
+            Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _amber,
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.local_shipping_outlined,
+                      size: 12, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text('BOBTAIL',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                ],
+              ),
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // ── Summary strip ──────────────────────────────────────
+          Container(
+            color: _navy,
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Order Details',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: statusColor,
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            widget.order.status,
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow('Customer', customerName),
-                    _buildInfoRow('Address', address),
-                    _buildInfoRow('Order Type', widget.order.orderType),
-                    _buildInfoRow('Created At', _formatDate(widget.order.createdAt)),
-                    if (widget.order.expectedDeliveryDate != null)
-                      _buildInfoRow(
-                        'Expected Date',
-                        widget.order.expectedDeliveryDate!,
-                      ),
-                    if (widget.order.expectedDeliveryTime != null)
-                      _buildInfoRow(
-                        'Expected Time',
-                        widget.order.expectedDeliveryTime!,
-                      ),
-                    if (widget.order.notes != null &&
-                        widget.order.notes!.trim().isNotEmpty)
-                      _buildInfoRow('Notes', widget.order.notes!),
+                    _pill('$count ${count == 1 ? "Cylinder" : "Cylinders"}',
+                        Icons.propane_tank_outlined),
+                    const SizedBox(width: 8),
+                    _pill(
+                        '${(order.hasBobtail ? (order.expectedKg ?? order.totalKg ?? order.totalKgsLoaded) : order.totalKgsLoaded).toStringAsFixed(1)} kg total',
+                        Icons.scale_outlined),
                   ],
                 ),
-              ),
+                if (order.hasBobtail) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color: _amber.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(8),
+                      color: _amber.withValues(alpha: 0.1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_shipping_outlined,
+                            size: 14, color: _amber),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            order.expectedKg != null
+                                ? 'Delivery of ${order.expectedKg!.toStringAsFixed(1)} kg by bobtail'
+                                : order.totalKg != null
+                                    ? 'Delivery of ${order.totalKg!.toStringAsFixed(1)} kg by bobtail'
+                                    : 'Bobtail delivery',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _amber),
+                          ),
+                        ),
+                        if (order.bobtail?.plateNumber != null)
+                          Text(order.bobtail!.plateNumber!,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _amber)),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Items',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+          ),
+
+          // ── Content list ───────────────────────────────────────
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              children: [
+                // Bobtail-only: no cylinders, just a KG info card
+                if (order.hasBobtail && order.items.isEmpty) ...[
+                  _buildBobtailKgCard(order),
+                  const SizedBox(height: 12),
+                ],
+
+                // Swap cylinders — interactive return for home, read-only otherwise
+                if (order.typeLabel == 'HOME') ...[
+                  _buildSwapReturnSection(),
+                  const SizedBox(height: 12),
+                ] else if (order.swapCylinders.isNotEmpty) ...[
+                  _buildSwapCylindersSection(order.swapCylinders),
+                  const SizedBox(height: 12),
+                ],
+
+                // Cylinder list
+                if (order.items.isNotEmpty)
+                  _buildCylinderList(order),
+              ],
             ),
-            const SizedBox(height: 12),
-            ...widget.order.items.map((item) {
-              final name = item.product?.name ?? 'Item';
-              final quantity = item.quantity;
-              final unit = item.product?.unitOfMeasure ?? '';
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+          ),
+        ],
+      ),
+
+      // ── Bottom bar ─────────────────────────────────────────────
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: _border)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasDirty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.local_shipping_rounded,
-                          color: AppColors.primary,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$quantity $unit',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
+                      const Icon(Icons.warning_amber_rounded,
+                          size: 14, color: _amber),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Some weights have unsaved changes',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: _amber,
+                            fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
-              );
-            }).toList(),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : _confirmDelivery,
-                icon: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check_circle_outline, size: 20),
-                label: Text(
-                  _isSubmitting ? 'Confirming...' : 'Confirm Delivery',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: _isSubmitting ? null : _confirmDelivery,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 17,
+                          height: 17,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.check_circle_outline, size: 19),
+                  label: Text(
+                    _isSubmitting ? 'Confirming...' : 'Confirm Delivery',
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+  // ── Summary pill ─────────────────────────────────────────────────
+  Widget _pill(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
+          Icon(icon, size: 13, color: Colors.white70),
+          const SizedBox(width: 5),
+          Text(label,
               style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white)),
+        ],
+      ),
+    );
+  }
+
+  // ── Cylinder list (flat for home, accordion for retail/commercial) ─
+  Widget _buildCylinderList(DeliveryOrder order) {
+    final isHome = order.typeLabel == 'HOME';
+    final swaps = order.swapCylinders;
+
+    if (isHome) {
+      // Simple flat card — serial + KGs loaded per row
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _border),
+        ),
+        child: Column(
+          children: [
+            // Header row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: _navy.withValues(alpha: 0.05),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(11)),
+              ),
+              child: Row(
+                children: const [
+                  SizedBox(width: 38), // badge width + gap
+                  Expanded(
+                    child: Text(
+                      'Serial Number',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _muted,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'KGs Loaded',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _muted,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: _border),
+            ...order.items.asMap().entries.map((e) {
+              final index = e.key;
+              final item = e.value;
+
+              // Resolve serial from swap_cylinders if item has none
+              String serial = item.trackingCode;
+              if (serial == 'N/A' && swaps.isNotEmpty) {
+                serial = index < swaps.length
+                    ? swaps[index].serial
+                    : swaps[0].serial;
+              }
+
+              final kgs = item.kgsLoaded.toStringAsFixed(2);
+              final isLast = index == order.items.length - 1;
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: _navy.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: _navy,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            serial,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _text,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '$kgs kg',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _navy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isLast) Divider(height: 1, color: _border),
+                ],
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    // Non-home: accordion per cylinder
+    return Column(
+      children: order.items.asMap().entries.map((e) {
+        final index = e.key;
+        final item = e.value;
+        final name = item.product?.name ?? item.cylinderName ?? 'Cylinder';
+        String? swapSerial;
+        if (swaps.isNotEmpty) {
+          swapSerial = index < swaps.length
+              ? swaps[index].serial
+              : swaps[0].serial;
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _buildAccordion(item, name, index, swapSerial: swapSerial),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── Accordion row ────────────────────────────────────────────────
+  Widget _buildAccordion(
+      DeliveryOrderItem item, String productName, int index,
+      {String? swapSerial}) {
+    final isHome = widget.order.typeLabel == 'HOME';
+    final displaySerial = item.trackingCode != 'N/A'
+        ? item.trackingCode
+        : (swapSerial?.isNotEmpty == true ? swapSerial! : 'N/A');
+    final isOpen = _expandedIndex == index;
+    final isDirty = !isHome && _weightDirty[index];
+    final isSaving = !isHome && _weightSaving[index];
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDirty ? _amber : (isOpen ? _blue : _border),
+          width: isOpen || isDirty ? 1.5 : 1,
+        ),
+        boxShadow: isOpen
+            ? [
+                BoxShadow(
+                  color: _blue.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                )
+              ]
+            : [],
+      ),
+      child: Column(
+        children: [
+          // ── Collapsed row (always visible) ──────────────────────
+          InkWell(
+            onTap: () => setState(() =>
+                _expandedIndex = isOpen ? -1 : index),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  // Index badge
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: isOpen
+                          ? _blue
+                          : _navy.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isOpen ? Colors.white : _navy,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Serial + name
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          productName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _text,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          displaySerial,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: _muted,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Weight preview
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          if (isDirty)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 5),
+                              child: Icon(Icons.edit_rounded,
+                                  size: 12, color: _amber),
+                            ),
+                          Text(
+                            isHome
+                                ? '${item.kgsLoaded.toStringAsFixed(2)} kg'
+                                : '${item.currentWeight.toStringAsFixed(2)} kg',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDirty ? _amber : _text,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        isHome ? 'KGs loaded' : 'current wt',
+                        style: const TextStyle(fontSize: 10, color: _muted),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    isOpen
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: _muted,
+                  ),
+                ],
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+
+          // ── Expanded content ────────────────────────────────────
+          if (isOpen) ...[
+            Divider(height: 1, color: _border),
+
+            Padding(
+              padding: EdgeInsets.fromLTRB(14, 12, 14, isHome ? 12 : 0),
+              child: Row(
+                children: [
+                  if (!isHome) ...[
+                    Expanded(
+                        child: _statCell(
+                      label: 'Bottom Edge',
+                      value:
+                          '${item.bottomEdgeWeight.toStringAsFixed(2)} kg',
+                      icon: Icons.vertical_align_bottom_rounded,
+                    )),
+                    Container(
+                        width: 1, height: 36, color: _border),
+                  ],
+                  Expanded(
+                      child: _statCell(
+                    label: 'KGs Loaded',
+                    value: '${item.kgsLoaded.toStringAsFixed(2)} kg',
+                    icon: Icons.local_gas_station_outlined,
+                  )),
+                ],
               ),
             ),
+
+            if (!isHome) ...[
+            Divider(
+                height: 24,
+                indent: 14,
+                endIndent: 14,
+                color: _border),
+
+            // Weight label
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  const Icon(Icons.monitor_weight_outlined,
+                      size: 13, color: _muted),
+                  const SizedBox(width: 6),
+                  const Text('Update Current Weight',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _muted)),
+                  if (isDirty) ...[
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Text('MODIFIED',
+                          style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: _amber,
+                              letterSpacing: 0.4)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // ── Input row ──────────────────────────────────────
+            Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(14, 0, 14, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: isDirty
+                            ? const Color(0xFFFFFBF0)
+                            : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDirty
+                              ? _amber
+                              : _border,
+                          width: isDirty ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: TextField(
+                              controller:
+                                  _weightControllers[index],
+                              keyboardType:
+                                  const TextInputType
+                                      .numberWithOptions(
+                                          decimal: true),
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: isDirty
+                                    ? _amber
+                                    : _text,
+                                letterSpacing: 0.3,
+                                height: 1.1,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding:
+                                    EdgeInsets.zero,
+                                hintText: '0.00',
+                                hintStyle: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 26,
+                                    fontWeight:
+                                        FontWeight.w800),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                right: 14),
+                            child: Text('kg',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDirty
+                                        ? _amber
+                                        : _muted)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Save / spinner / check
+                  SizedBox(
+                    width: 54,
+                    height: 54,
+                    child: AnimatedSwitcher(
+                      duration:
+                          const Duration(milliseconds: 200),
+                      child: isDirty
+                          ? (isSaving
+                              ? Container(
+                                  key: const ValueKey('spin'),
+                                  decoration: BoxDecoration(
+                                    color: _amber
+                                        .withValues(alpha: 0.1),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            10),
+                                    border: Border.all(
+                                        color: _amber
+                                            .withValues(
+                                                alpha: 0.3)),
+                                  ),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child:
+                                          CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: _amber,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : GestureDetector(
+                                  key: const ValueKey('save'),
+                                  onTap: () =>
+                                      _saveWeight(index),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _amber,
+                                      borderRadius:
+                                          BorderRadius.circular(
+                                              10),
+                                    ),
+                                    child: const Icon(
+                                        Icons.check_rounded,
+                                        color: Colors.white,
+                                        size: 22),
+                                  ),
+                                ))
+                          : Container(
+                              key: const ValueKey('ok'),
+                              decoration: BoxDecoration(
+                                color: _green
+                                    .withValues(alpha: 0.08),
+                                borderRadius:
+                                    BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: _green
+                                        .withValues(alpha: 0.25)),
+                              ),
+                              child: const Icon(
+                                  Icons.check_rounded,
+                                  color: _green,
+                                  size: 20),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ], // end if (!isHome)
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Bobtail KG info card ─────────────────────────────────────────
+  Widget _buildBobtailKgCard(DeliveryOrder order) {
+    final kg = order.expectedKg ?? order.totalKg ?? 0.0;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _amber.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.local_shipping_outlined, size: 36, color: _amber),
+          const SizedBox(height: 12),
+          Text(
+            '${kg.toStringAsFixed(1)} kg',
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              color: _amber,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Expected KGs to be delivered',
+            style: TextStyle(fontSize: 13, color: _muted),
+          ),
+          if (order.bobtail?.plateNumber != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _navy.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.directions_car_outlined,
+                      size: 13, color: _navy),
+                  const SizedBox(width: 6),
+                  Text(
+                    order.bobtail!.plateNumber!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _navy,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Swap cylinder return section (home deliveries) ───────────────
+  Widget _buildSwapReturnSection() {
+    final returnedCount =
+        _swapAssignments.where((s) => s.isReturned).length;
+    final totalCount = _swapAssignments.length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ──────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.swap_horiz_rounded,
+                    size: 15, color: _blue),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _swapLoading
+                        ? 'Loading swap cylinders…'
+                        : 'Swap Cylinders ($returnedCount/$totalCount returned)',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _text,
+                    ),
+                  ),
+                ),
+                if (_swapLoading)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: _blue),
+                  )
+                else
+                  GestureDetector(
+                    onTap: _loadSwapAssignments,
+                    child: const Icon(Icons.refresh_rounded,
+                        size: 16, color: _muted),
+                  ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: _border),
+
+          if (_swapLoading && _swapAssignments.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Text('Loading…',
+                    style: TextStyle(fontSize: 13, color: _muted)),
+              ),
+            )
+          else if (_swapAssignments.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'No swap cylinders found for this delivery.',
+                style: TextStyle(fontSize: 13, color: _muted),
+              ),
+            )
+          else
+            ..._swapAssignments.asMap().entries.map((e) {
+              final i = e.key;
+              final swap = e.value;
+              final isReturning =
+                  _returningId[swap.assignmentId] == true;
+              final isLast = i == _swapAssignments.length - 1;
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    child: Row(
+                      children: [
+                        // Index badge
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: swap.isReturned
+                                ? _green.withValues(alpha: 0.1)
+                                : _blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              swap.isReturned
+                                  ? Icons.check_rounded
+                                  : Icons.propane_tank_outlined,
+                              size: 14,
+                              color:
+                                  swap.isReturned ? _green : _blue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Cylinder info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                swap.cylinderName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _text,
+                                ),
+                              ),
+                              Text(
+                                swap.serial,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: _muted,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              if (swap.isReturned &&
+                                  swap.returnedAt != null)
+                                Text(
+                                  'Returned: ${swap.returnedAt}',
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      color: _green),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Action button
+                        if (swap.isReturned)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _green.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color:
+                                      _green.withValues(alpha: 0.3)),
+                            ),
+                            child: const Text(
+                              'Returned',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _green),
+                            ),
+                          )
+                        else if (isReturning)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: _blue),
+                          )
+                        else
+                          GestureDetector(
+                            onTap: () => _markReturned(swap),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _navy,
+                                borderRadius:
+                                    BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Mark Returned',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (!isLast) Divider(height: 1, color: _border),
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  // ── Swap cylinders section (read-only, non-home) ──────────────────
+  Widget _buildSwapCylindersSection(List<SwapCylinder> swaps) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.swap_horiz_rounded, size: 15, color: _blue),
+                const SizedBox(width: 8),
+                Text(
+                  'Swap Cylinders (${swaps.length})',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _text,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: _border),
+          ...swaps.asMap().entries.map((e) {
+            final i = e.key;
+            final s = e.value;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: _blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${i + 1}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: _blue,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.cylinderName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _text,
+                              ),
+                            ),
+                            Text(
+                              s.serial,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: _muted,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.swap_horiz_rounded,
+                          size: 14, color: _muted),
+                    ],
+                  ),
+                ),
+                if (i < swaps.length - 1) Divider(height: 1, color: _border),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ── Stat cell ────────────────────────────────────────────────────
+  Widget _statCell({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: _muted),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _text,
+                      height: 1.1)),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 10, color: _muted, height: 1.2)),
+            ],
           ),
         ],
       ),
@@ -363,3 +1548,4 @@ class _DeliveryOrderDetailsScreenState
   }
 
 }
+

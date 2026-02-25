@@ -168,6 +168,7 @@ class PendingGasOrder {
   final ServiceStation site;
   final int tanksCount;
   final List<TankPreview> itemsPreview;
+  final String? customerType;
 
   PendingGasOrder({
     required this.id,
@@ -180,6 +181,7 @@ class PendingGasOrder {
     required this.site,
     required this.tanksCount,
     required this.itemsPreview,
+    this.customerType,
   });
 
   factory PendingGasOrder.fromJson(Map<String, dynamic> json) {
@@ -196,6 +198,7 @@ class PendingGasOrder {
       itemsPreview: (json['items_preview'] as List<dynamic>?)
           ?.map((item) => TankPreview.fromJson(item))
           .toList() ?? [],
+      customerType: json['customer_type'],
     );
   }
 }

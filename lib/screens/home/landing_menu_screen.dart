@@ -8,8 +8,6 @@ import '../auth/mobile_login_screen.dart';
 import '../gas_order/select_cylinders_screen.dart';
 import '../collections/cylinder_collections_screen.dart';
 import '../gas_order/delivery_scan_screen.dart';
-import '../reports/incident_report_screen.dart';
-import '../reports/generator_log_screen.dart';
 import '../reports/reports_menu_screen.dart';
 import '../common/check_updates_screen.dart';
 import 'dashboard_screen.dart';
@@ -135,7 +133,6 @@ class _LandingMenuScreenState extends State<LandingMenuScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final user = auth.currentUser;
 
     return Scaffold(
       appBar: PreferredSize(
@@ -248,41 +245,8 @@ class _MenuList extends StatelessWidget {
         },
       ),
       _MenuItem(
-        title: 'RECEIVE DELIVERY',
-        subtitle: 'Scan QR to receive cylinder deliveries',
-        icon: Icons.qr_code_scanner,
-        color: const Color(0xFF10B981),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const DeliveryScanScreen()),
-          );
-        },
-      ),
-      _MenuItem(
-        title: 'INCIDENT REPORTS',
-        subtitle: 'Report issues at your station',
-        icon: Icons.report_problem,
-        color: const Color(0xFFFF9800),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const IncidentReportScreen()),
-          );
-        },
-      ),
-      _MenuItem(
-        title: 'GENERATOR USAGE',
-        subtitle: 'Track generator running times',
-        icon: Icons.power,
-        color: const Color(0xFFE91E63),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const GeneratorLogScreen()),
-          );
-        },
-      ),
-      _MenuItem(
         title: 'REPORTS',
-        subtitle: 'Batch cutoff, last sale, audit, reversals',
+        subtitle: 'Batch cutoff, last sale, audit, incident, generator',
         icon: Icons.bar_chart,
         color: const Color(0xFF0EA5E9),
         onTap: () {
@@ -344,7 +308,7 @@ class _MenuList extends StatelessWidget {
       children: [
         for (final it in items) ...[
           _MenuTile(item: it),
-          const SizedBox(height: 12),
+          const SizedBox(height: 9),
         ],
       ],
     );
@@ -453,13 +417,13 @@ class _MenuTile extends StatelessWidget {
           onTap: item.onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 // Modern icon container with color
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -481,10 +445,10 @@ class _MenuTile extends StatelessWidget {
                   child: Icon(
                     item.icon,
                     color: Colors.white,
-                    size: 28,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 // Title and subtitle
                 Expanded(
                   child: Column(
@@ -493,7 +457,7 @@ class _MenuTile extends StatelessWidget {
                       Text(
                         item.title,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           letterSpacing: 0.3,
@@ -505,9 +469,9 @@ class _MenuTile extends StatelessWidget {
                       Text(
                         item.subtitle,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: Colors.grey[600],
-                          height: 1.3,
+                          height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -515,12 +479,12 @@ class _MenuTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 // Arrow icon
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: Colors.grey[400],
-                  size: 18,
+                  size: 16,
                 ),
               ],
             ),

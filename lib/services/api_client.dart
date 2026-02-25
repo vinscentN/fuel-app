@@ -1,5 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'session_expiry_service.dart';
+
+const _kConnectivityMessage =
+    'The device lost internet connection and failed to finish the process.';
 
 class ApiClient {
   final Map<String, String> defaultHeaders = const {
@@ -15,14 +21,21 @@ class ApiClient {
     print('[API] POST: $url');
     if (body != null) print('[API] Body: ${jsonEncode(body)}');
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {...defaultHeaders, ...?headers},
-      body: jsonEncode(body ?? {}),
-    );
-
-    _logResponse(response);
-    return _processResponse(response);
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {...defaultHeaders, ...?headers},
+        body: jsonEncode(body ?? {}),
+      );
+      _logResponse(response);
+      return await _processResponse(response);
+    } on SocketException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on TimeoutException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on http.ClientException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    }
   }
 
   Future<Map<String, dynamic>> get(
@@ -31,13 +44,20 @@ class ApiClient {
   }) async {
     print('[API] GET: $url');
 
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {...defaultHeaders, ...?headers},
-    );
-
-    _logResponse(response);
-    return _processResponse(response);
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {...defaultHeaders, ...?headers},
+      );
+      _logResponse(response);
+      return await _processResponse(response);
+    } on SocketException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on TimeoutException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on http.ClientException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    }
   }
 
   Future<Map<String, dynamic>> put(
@@ -48,14 +68,21 @@ class ApiClient {
     print('[API] PUT: $url');
     if (body != null) print('[API] Body: ${jsonEncode(body)}');
 
-    final response = await http.put(
-      Uri.parse(url),
-      headers: {...defaultHeaders, ...?headers},
-      body: jsonEncode(body ?? {}),
-    );
-
-    _logResponse(response);
-    return _processResponse(response);
+    try {
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {...defaultHeaders, ...?headers},
+        body: jsonEncode(body ?? {}),
+      );
+      _logResponse(response);
+      return await _processResponse(response);
+    } on SocketException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on TimeoutException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on http.ClientException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    }
   }
 
   Future<Map<String, dynamic>> patch(
@@ -66,21 +93,28 @@ class ApiClient {
     print('[API] PATCH: $url');
     if (body != null) print('[API] Body: ${jsonEncode(body)}');
 
-    final response = await http.patch(
-      Uri.parse(url),
-      headers: {...defaultHeaders, ...?headers},
-      body: jsonEncode(body ?? {}),
-    );
-
-    _logResponse(response);
-    return _processResponse(response);
+    try {
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: {...defaultHeaders, ...?headers},
+        body: jsonEncode(body ?? {}),
+      );
+      _logResponse(response);
+      return await _processResponse(response);
+    } on SocketException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on TimeoutException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    } on http.ClientException catch (_) {
+      throw Exception(_kConnectivityMessage);
+    }
   }
 
   void _logResponse(http.Response response) {
     print('[API] Response [${response.statusCode}]: ${response.body}');
   }
 
-  Map<String, dynamic> _processResponse(http.Response response) {
+  Future<Map<String, dynamic>> _processResponse(http.Response response) async {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final body = response.body.trim();
       if (body.isEmpty) return {};
@@ -88,6 +122,11 @@ class ApiClient {
       if (decoded is Map<String, dynamic>) return decoded;
       return {'data': decoded};
     } else {
+      if (response.statusCode == 401) {
+        await SessionExpiryService.handleUnauthorized();
+        throw Exception('Session expired. Please sign in again.');
+      }
+
       // Try to extract error message from response body
       String errorMessage = 'An unexpected error occurred';
 

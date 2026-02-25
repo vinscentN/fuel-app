@@ -346,7 +346,7 @@ class PosProvider extends ChangeNotifier {
     required String time,
     required String pumpNo,
     required String product,
-    String unit = 'L',
+    String unit = 'Kg',
     required String litres,
     required String pricePerLitre,
     required String total,
@@ -565,8 +565,11 @@ class PosProvider extends ChangeNotifier {
     required String cylinderDetails,
     required String description,
     required String siteName,
-    required String siteCode,
+    String siteCode = '',
+    String? totalKgsDelivered,
     String? copyType,
+    String detailsLabel = 'CYLINDER DETAILS',
+    String recipientLabel = 'Customer',
   }) async {
     _setLoading(true);
     try {
@@ -584,7 +587,10 @@ class PosProvider extends ChangeNotifier {
         "cylinderDetails": cylinderDetails,
         "description": description,
         "siteName": siteName,
-        "siteCode": siteCode,
+        if (siteCode.isNotEmpty) "siteCode": siteCode,
+        if (totalKgsDelivered != null) "totalKgsDelivered": totalKgsDelivered,
+        "detailsLabel": detailsLabel,
+        "recipientLabel": recipientLabel,
       };
 
       if (copyType != null && copyType.isNotEmpty) {

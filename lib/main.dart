@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 
 import 'providers/auth_provider.dart';
 import 'providers/fuel_provider.dart';
@@ -13,6 +14,8 @@ import 'screens/home/dashboard_screen.dart';
 import 'screens/pos_test_screen.dart';
 import 'screens/home/landing_menu_screen.dart';
 import 'screens/splash/splash_screen.dart';
+import 'screens/auth/mobile_login_screen.dart';
+import 'services/session_expiry_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,21 +25,52 @@ void main() async {
   runApp(FuelStationApp(authProvider: authProvider));
 }
 
-class FuelStationApp extends StatelessWidget {
+class FuelStationApp extends StatefulWidget {
   final AuthProvider authProvider;
 
   const FuelStationApp({super.key, required this.authProvider});
 
   @override
+  State<FuelStationApp> createState() => _FuelStationAppState();
+}
+
+class _FuelStationAppState extends State<FuelStationApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<String>? _sessionExpirySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionExpirySubscription =
+        SessionExpiryService.onSessionExpired.listen((message) async {
+      await widget.authProvider.clearLocalSession();
+      if (!mounted) return;
+      _navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => MobileLoginScreen(sessionExpiredMessage: message),
+        ),
+        (route) => false,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _sessionExpirySubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+        ChangeNotifierProvider<AuthProvider>.value(value: widget.authProvider),
         ChangeNotifierProvider(create: (_) => FuelProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
         ChangeNotifierProvider(create: (_) => PosProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'Fuel Mate',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(

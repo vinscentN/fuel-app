@@ -7,11 +7,8 @@ import '../../constants/api_constants.dart';
 import '../auth/mobile_login_screen.dart';
 import '../common/check_updates_screen.dart';
 import '../collections/driver_collections_screen.dart';
-import 'site_selection_screen.dart';
-import 'pending_deliveries_screen.dart';
-import 'warehouse_purchases_screen.dart';
 import 'pending_fill_requests_screen.dart';
-import 'bobtail_orders_screen.dart';
+import 'deliveries_menu_screen.dart';
 
 class DriverMenuScreen extends StatefulWidget {
   const DriverMenuScreen({super.key});
@@ -149,7 +146,7 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
               const SizedBox(height: 12),
               _buildMenuTile(
                 icon: Icons.qr_code_scanner,
-                title: 'CYLINDER COLLECTION',
+                title: 'CYLINDER COLLECTIONS',
                 subtitle: 'View prepared cylinders for pickup',
                 color: const Color(0xFF6366F1),
                 onTap: () {
@@ -162,56 +159,14 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
               ),
               const SizedBox(height: 12),
               _buildMenuTile(
-                icon: Icons.inventory_2_outlined,
-                title: 'SUPPLIER PURCHASES',
-                subtitle: 'Purchasing from Supplier',
-                color: const Color(0xFFFF9800),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const WarehousePurchasesScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuTile(
-                icon: Icons.local_shipping_rounded,
-                title: 'BOBTAIL',
-                subtitle: 'View assigned bobtail orders',
-                color: const Color(0xFF14B8A6),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const BobtailOrdersScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuTile(
-                icon: Icons.add_box_outlined,
-                title: 'CREATE DELIVERY',
-                subtitle: 'Create delivery for refilled cylinders',
-                color: const Color(0xFF8B5CF6),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const SiteSelectionScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuTile(
                 icon: Icons.local_shipping_outlined,
-                title: 'NEW DELIVERIES',
-                subtitle: 'View and manage pending deliveries',
+                title: 'DELIVERIES',
+                subtitle: 'Select delivery type to manage',
                 color: const Color(0xFF10B981),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const PendingDeliveriesScreen(),
+                      builder: (_) => const DeliveriesMenuScreen(),
                     ),
                   );
                 },
@@ -219,7 +174,7 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
               const SizedBox(height: 12),
               _buildMenuTile(
                 icon: Icons.system_update_alt,
-                title: 'CHECK FOR UPDATES',
+                title: 'CHECK UPDATES',
                 subtitle: 'Update to the latest version',
                 color: const Color(0xFFE91E63),
                 onTap: () {

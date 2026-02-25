@@ -636,7 +636,7 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api(centerText("=== RECEIPT ==="));
         PrinterApi.PrnStr_Api("\n");
         PrinterApi.PrnStr_Api("Station: " + stationName);
-        PrinterApi.PrnStr_Api("Address: " + address);
+//        PrinterApi.PrnStr_Api("Address: " + address);
         PrinterApi.PrnStr_Api("Tel: " + phone);
         PrinterApi.PrnStr_Api("--------------------------------");
         PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
@@ -944,8 +944,6 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api(centerText("=== " + title + " ==="));
         PrinterApi.PrnStr_Api("\n");
         if (stationName != null && !stationName.isEmpty()) PrinterApi.PrnStr_Api("Station: " + stationName);
-        if (address != null && !address.isEmpty()) PrinterApi.PrnStr_Api("Address: " + address);
-        if (phone != null && !phone.isEmpty()) PrinterApi.PrnStr_Api("Tel: " + phone);
         PrinterApi.PrnStr_Api("--------------------------------");
         PrinterApi.PrnStr_Api("DATE: " + date + "   TIME: " + time);
         if (pumpNo != null && !pumpNo.trim().isEmpty()) PrinterApi.PrnStr_Api("Pump: " + pumpNo);
@@ -1252,6 +1250,7 @@ public class MainActivity extends FlutterActivity {
                                    String address, String phone, String date, String time,
                                    String driverName, String cylinderCount, String cylinderDetails,
                                    String description, String siteName, String siteCode) {
+        final String detailsLabel = "CYLINDER DETAILS";
         PrinterApi.PrnClrBuff_Api();
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
@@ -1297,7 +1296,7 @@ public class MainActivity extends FlutterActivity {
 
         // Cylinder details
         if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
-            PrinterApi.PrnStr_Api("CYLINDER DETAILS:");
+            PrinterApi.PrnStr_Api(detailsLabel + ":");
             PrinterApi.PrnStr_Api("\n");
             String[] lines = cylinderDetails.split("\n");
             for (String line : lines) {
@@ -1336,21 +1335,29 @@ public class MainActivity extends FlutterActivity {
                 String siteName = safeStr(args.get("siteName"));
                 String siteCode = safeStr(args.get("siteCode"));
                 String copyType = safeStr(args.get("copyType"));
+                String detailsLabel = safeStr(args.get("detailsLabel"));
+                if (detailsLabel == null || detailsLabel.isEmpty()) {
+                    detailsLabel = "CYLINDER DETAILS";
+                }
+                String recipientLabel = safeStr(args.get("recipientLabel"));
+                if (recipientLabel == null || recipientLabel.isEmpty()) {
+                    recipientLabel = "Customer";
+                }
 
                 if (copyType != null && !copyType.isEmpty()) {
                     printDeliveryReceipt(copyType, requestCode, deliveryCode, invoiceNumber,
                                       stationName, address, phone, date, time, driverName,
-                                      cylinderCount, cylinderDetails, description, siteName, siteCode);
+                                      cylinderCount, cylinderDetails, description, siteName, siteCode, detailsLabel, recipientLabel);
                 } else {
                     // Print driver copy
                     printDeliveryReceipt("DRIVER COPY", requestCode, deliveryCode, invoiceNumber,
                                       stationName, address, phone, date, time, driverName,
-                                      cylinderCount, cylinderDetails, description, siteName, siteCode);
+                                      cylinderCount, cylinderDetails, description, siteName, siteCode, detailsLabel, recipientLabel);
 
                     // Print attendant copy
                     printDeliveryReceipt("ATTENDANT COPY", requestCode, deliveryCode, invoiceNumber,
                                       stationName, address, phone, date, time, driverName,
-                                      cylinderCount, cylinderDetails, description, siteName, siteCode);
+                                      cylinderCount, cylinderDetails, description, siteName, siteCode, detailsLabel, recipientLabel);
                 }
 
                 runOnUiThread(() -> result.success("Delivery receipts printed"));
@@ -1365,7 +1372,7 @@ public class MainActivity extends FlutterActivity {
                                      String invoiceNumber, String stationName, String address,
                                      String phone, String date, String time, String driverName,
                                      String cylinderCount, String cylinderDetails, String description,
-                                     String siteName, String siteCode) {
+                                     String siteName, String siteCode, String detailsLabel, String recipientLabel) {
         PrinterApi.PrnClrBuff_Api();
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
@@ -1403,9 +1410,15 @@ public class MainActivity extends FlutterActivity {
         // Delivery details
         PrinterApi.PrnStr_Api("Request Code: " + requestCode);
         PrinterApi.PrnStr_Api("Delivery Code: " + deliveryCode);
-        PrinterApi.PrnStr_Api("Invoice No: " + invoiceNumber);
-        PrinterApi.PrnStr_Api("Site: " + siteName);
-        PrinterApi.PrnStr_Api("Site Code: " + siteCode);
+        if (invoiceNumber != null && !invoiceNumber.isEmpty() && !invoiceNumber.equals("N/A")) {
+            PrinterApi.PrnStr_Api("Invoice No: " + invoiceNumber);
+        }
+        if (siteName != null && !siteName.isEmpty()) {
+            PrinterApi.PrnStr_Api(recipientLabel + ": " + siteName);
+        }
+        if (siteCode != null && !siteCode.isEmpty()) {
+            PrinterApi.PrnStr_Api("Site Code: " + siteCode);
+        }
         PrinterApi.PrnStr_Api("Driver: " + driverName);
         PrinterApi.PrnStr_Api("Description: " + description);
         PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
@@ -1413,7 +1426,7 @@ public class MainActivity extends FlutterActivity {
 
         // Cylinder details
         if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
-            PrinterApi.PrnStr_Api("CYLINDER DETAILS:");
+            PrinterApi.PrnStr_Api(detailsLabel + ":");
             PrinterApi.PrnStr_Api("\n");
             String[] lines = cylinderDetails.split("\n");
             for (String line : lines) {
