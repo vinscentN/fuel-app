@@ -199,7 +199,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen>
       tag: 'app_logo',
       child: Image.asset(
         "images/logo.png",
-        height: 45,
+        height: 56,
         fit: BoxFit.contain,
       ),
     );

@@ -83,9 +83,9 @@ class _SplashScreenState extends State<SplashScreen>
     final auth = Provider.of<AuthProvider>(context);
 
     String displayName = auth.serviceStationName ?? '';
-    displayName = displayName.replaceAll(RegExp(r'\s*Gasman\s+?\s*$', caseSensitive: false), '').trim();
+    displayName = displayName.replaceAll(RegExp(r'\s*GASMATE\s+?\s*$', caseSensitive: false), '').trim();
     if (displayName.isEmpty) {
-      displayName = 'Gasman';
+      displayName = 'GASMATE';
     }
 
     return Scaffold(

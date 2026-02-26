@@ -1,4 +1,4 @@
-﻿// screens/payment/cash_payment_screen.dart
+// screens/payment/cash_payment_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/fuel_provider.dart';
@@ -341,7 +341,7 @@ class _CashPaymentScreenState extends State<CashPaymentScreen>
         final unit = _unitShort(fuel.selectedProduct?.unitOfMeasure);
         await pos.printReceiptCopy(
           copyType: 'CUSTOMER COPY',
-          stationName: (r['stationName'] ?? auth.currentUser?.serviceStationName ?? 'GASMAN').toString(),
+          stationName: (r['stationName'] ?? auth.currentUser?.serviceStationName ?? 'GASMATE').toString(),
           address: (r['address'] ?? '').toString(),
           phone: (r['phone'] ?? '').toString(),
           date: (r['date'] ?? '').toString(),

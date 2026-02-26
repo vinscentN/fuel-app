@@ -1,7 +1,7 @@
 # App Update System - Setup Guide
 
 ## Overview
-The GASMAN app now includes an automatic update checker that allows users to download and install new versions directly from within the app.
+The GASMATE app now includes an automatic update checker that allows users to download and install new versions directly from within the app.
 
 ## How It Works
 

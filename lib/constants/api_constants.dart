@@ -1,6 +1,6 @@
 class ApiConstants {
   // For local testing with physical device, use your computer's local IP
-  static const String baseUrl = "https://gasman.poscloud.co.zw/api/pos";
+  static const String baseUrl = "https://gasman-sandbox.poscloud.co.zw/api/pos";
   //static const String baseUrl = "http://127.0.0.1:8000/api/pos";
   // Auth Endpoints
   static const String mobileLogin = "$baseUrl/login";

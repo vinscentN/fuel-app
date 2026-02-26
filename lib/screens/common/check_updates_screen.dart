@@ -189,7 +189,7 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'GASMAN',
+                                'GASMATE',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

@@ -100,7 +100,7 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
             elevation: 0,
             centerTitle: false,
             title: const Text(
-              'GASMAN',
+              'GASMATE',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -373,7 +373,7 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'GASMAN',
+                            'GASMATE',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
