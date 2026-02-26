@@ -55,12 +55,15 @@ class DeliveryOrderService {
     required String status,
     required int assignedDriverId,
     required String token,
+    List<Map<String, dynamic>>? items,
     List<Map<String, dynamic>>? cylinders,
   }) async {
     try {
       final body = <String, dynamic>{
         'status': status,
         'assigned_driver_id': assignedDriverId,
+        if (items != null && items.isNotEmpty)
+          'items': items,
         if (cylinders != null && cylinders.isNotEmpty)
           'cylinders': cylinders,
       };
@@ -129,6 +132,7 @@ class DeliveryOrderService {
     required String status,
     required int assignedDriverId,
     required String token,
+    List<Map<String, dynamic>>? items,
     List<Map<String, dynamic>>? cylinders,
   }) =>
       updateStatus(
@@ -136,6 +140,7 @@ class DeliveryOrderService {
         status: status,
         assignedDriverId: assignedDriverId,
         token: token,
+        items: items,
         cylinders: cylinders,
       );
 

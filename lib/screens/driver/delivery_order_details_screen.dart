@@ -32,6 +32,8 @@ class _DeliveryOrderDetailsScreenState
   late final List<bool> _weightSaving;
   // Accordion: which index is expanded (-1 = none)
   int _expandedIndex = -1;
+  // Track which home delivery item is being edited (-1 = none)
+  int _editingIndex = -1;
 
   // ── Swap cylinder return state (home deliveries only) ────────────
   List<SwapCylinder> _swapAssignments = [];
@@ -43,9 +45,13 @@ class _DeliveryOrderDetailsScreenState
   void initState() {
     super.initState();
     final items = widget.order.items;
+    final isHome = widget.order.typeLabel == 'HOME';
     _weightControllers = items
         .map((item) =>
-            TextEditingController(text: item.currentWeight.toStringAsFixed(2)))
+            TextEditingController(
+              text: (isHome ? item.kgsLoaded : item.currentWeight)
+                  .toStringAsFixed(2),
+            ))
         .toList();
     _weightDirty = List.filled(items.length, false);
     _weightSaving = List.filled(items.length, false);
@@ -53,8 +59,10 @@ class _DeliveryOrderDetailsScreenState
     for (int i = 0; i < _weightControllers.length; i++) {
       final idx = i;
       _weightControllers[idx].addListener(() {
-        final changed = _weightControllers[idx].text !=
-            widget.order.items[idx].currentWeight.toStringAsFixed(2);
+        final baseline = isHome
+            ? widget.order.items[idx].kgsLoaded.toStringAsFixed(2)
+            : widget.order.items[idx].currentWeight.toStringAsFixed(2);
+        final changed = _weightControllers[idx].text != baseline;
         if (_weightDirty[idx] != changed) {
           setState(() => _weightDirty[idx] = changed);
         }
@@ -177,15 +185,101 @@ class _DeliveryOrderDetailsScreenState
     }
   }
 
+  List<SwapCylinder> _returnableSwapAssignments() {
+    final deliveredCylinderIds = widget.order.items
+        .map((item) => item.cylinder?.id ?? 0)
+        .where((id) => id > 0)
+        .toSet();
+
+    final deliveredSerials = <String>{};
+    for (final item in widget.order.items) {
+      final tracking = item.trackingCode.trim().toUpperCase();
+      if (tracking.isNotEmpty && tracking != 'LPG GAS') {
+        deliveredSerials.add(tracking);
+      }
+      final serial = (item.serial ?? '').trim().toUpperCase();
+      if (serial.isNotEmpty && serial != 'LPG GAS') {
+        deliveredSerials.add(serial);
+      }
+      final cylinderSerial =
+          (item.cylinder?.trackingCode ?? '').trim().toUpperCase();
+      if (cylinderSerial.isNotEmpty && cylinderSerial != 'LPG GAS') {
+        deliveredSerials.add(cylinderSerial);
+      }
+    }
+
+    return _swapAssignments.where((swap) {
+      final serial = swap.serial.trim().toUpperCase();
+      final isDeliveredById =
+          swap.cylinderId > 0 && deliveredCylinderIds.contains(swap.cylinderId);
+      final isDeliveredBySerial =
+          serial.isNotEmpty && deliveredSerials.contains(serial);
+      return !isDeliveredById && !isDeliveredBySerial;
+    }).toList();
+  }
+
+  double _homeQtyFor(DeliveryOrderItem item, int index) {
+    return double.tryParse(_weightControllers[index].text.trim()) ??
+        item.kgsLoaded;
+  }
+
+  double _homeLineTotalFor(DeliveryOrderItem item, int index) {
+    return _homeQtyFor(item, index) * item.unitPrice;
+  }
+
+  double _homeGrandTotalFor(DeliveryOrder order) {
+    return order.items.asMap().entries.fold<double>(0, (sum, e) {
+      return sum + _homeLineTotalFor(e.value, e.key);
+    });
+  }
+
+  double _homeTotalKgsFor(DeliveryOrder order) {
+    return order.items.asMap().entries.fold<double>(0, (sum, e) {
+      return sum + _homeQtyFor(e.value, e.key);
+    });
+  }
+
+  void _toggleEditQuantity(int index) {
+    setState(() {
+      if (_editingIndex == index) {
+        // Close editing
+        _editingIndex = -1;
+      } else {
+        // Open editing for this item
+        _editingIndex = index;
+      }
+    });
+  }
+
+  void _applyQuantityEdit(int index) {
+    final parsed = double.tryParse(_weightControllers[index].text.trim());
+    if (parsed == null || parsed <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid quantity'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _editingIndex = -1;
+    });
+  }
+
   Future<void> _confirmDelivery() async {
     // If any weights are still dirty, prompt the driver
     if (_weightDirty.any((d) => d)) {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Unsaved weight changes'),
-          content: const Text(
-              'Some cylinder weights have not been saved. Confirm delivery anyway?'),
+          title: Text(widget.order.typeLabel == 'HOME'
+              ? 'Unsaved quantity changes'
+              : 'Unsaved weight changes'),
+          content: Text(widget.order.typeLabel == 'HOME'
+              ? 'Some cylinder quantities have unsaved changes. Confirm delivery anyway?'
+              : 'Some cylinder weights have not been saved. Confirm delivery anyway?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -214,22 +308,40 @@ class _DeliveryOrderDetailsScreenState
       if (token == null) throw Exception('Not authenticated');
       if (user == null) throw Exception('User not found');
 
-      // Build cylinders payload from controller values
-      final cylinders = <Map<String, dynamic>>[];
-      for (int i = 0; i < widget.order.items.length; i++) {
-        final item = widget.order.items[i];
-        final actualWeight =
-            double.tryParse(_weightControllers[i].text.trim()) ??
-                item.currentWeight;
-        final entry = <String, dynamic>{
-          'item_id': item.id,
-          'actual_weight': actualWeight,
-        };
-        // Include bottom_edge_weight if available
-        if (item.bottomEdgeWeight > 0) {
-          entry['bottom_edge_weight'] = item.bottomEdgeWeight;
+      // Build payload based on delivery type
+      final isHome = widget.order.typeLabel == 'HOME';
+      List<Map<String, dynamic>>? items;
+      List<Map<String, dynamic>>? cylinders;
+
+      if (isHome) {
+        // Home deliveries: use items array with delivered_quantity
+        items = <Map<String, dynamic>>[];
+        for (int i = 0; i < widget.order.items.length; i++) {
+          final item = widget.order.items[i];
+          final deliveredQty =
+              double.tryParse(_weightControllers[i].text.trim()) ?? item.kgsLoaded;
+          items.add({
+            'item_id': item.id,
+            'delivered_quantity': deliveredQty,
+          });
         }
-        cylinders.add(entry);
+      } else {
+        // Retail/Commercial/Site: use cylinders array with actual_weight
+        cylinders = <Map<String, dynamic>>[];
+        for (int i = 0; i < widget.order.items.length; i++) {
+          final item = widget.order.items[i];
+          final actualWeight =
+              double.tryParse(_weightControllers[i].text.trim()) ?? item.currentWeight;
+          final entry = <String, dynamic>{
+            'item_id': item.id,
+            'actual_weight': actualWeight,
+          };
+          // Include bottom_edge_weight if available
+          if (item.bottomEdgeWeight > 0) {
+            entry['bottom_edge_weight'] = item.bottomEdgeWeight;
+          }
+          cylinders.add(entry);
+        }
       }
 
       final updatedOrder = await _service.updateDeliveryStatus(
@@ -237,6 +349,7 @@ class _DeliveryOrderDetailsScreenState
         status: 'DELIVERED',
         assignedDriverId: user.id,
         token: token,
+        items: items,
         cylinders: cylinders,
       );
 
@@ -301,9 +414,18 @@ class _DeliveryOrderDetailsScreenState
     }
 
     // Total KGs delivered — use expectedKg for bobtail, product weight sum otherwise
-    final totalKgsValue = order.hasBobtail
-        ? (order.expectedKg ?? order.totalKg ?? order.totalKgsLoaded)
-        : order.totalKgsLoaded;
+    final totalKgsValue = isHome
+        ? order.items.asMap().entries.fold<double>(0, (sum, e) {
+            final idx = itemIdToIndex[e.value.id];
+            final qty = idx != null
+                ? (double.tryParse(_weightControllers[idx].text.trim()) ??
+                    e.value.kgsLoaded)
+                : e.value.kgsLoaded;
+            return sum + qty;
+          })
+        : order.hasBobtail
+            ? (order.expectedKg ?? order.totalKg ?? order.totalKgsLoaded)
+            : order.totalKgsLoaded;
     final totalKgs = totalKgsValue.toStringAsFixed(2);
 
     final customerName = order.customer?.name ?? order.site?.name ?? 'N/A';
@@ -318,25 +440,37 @@ class _DeliveryOrderDetailsScreenState
     // ── Helper: resolve serial for an item ──────────────────────────
     String resolveSerial(DeliveryOrderItem item, int idx) {
       String serial = item.trackingCode;
-      if ((serial.isEmpty || serial == 'N/A') &&
+      if ((serial.isEmpty || serial == 'LPG GAS') &&
           (item.serial?.isNotEmpty ?? false)) {
         serial = item.serial!;
       }
-      if ((serial.isEmpty || serial == 'N/A') && swaps.isNotEmpty) {
+      if ((serial.isEmpty || serial == 'LPG GAS') && swaps.isNotEmpty) {
         serial = idx < swaps.length ? swaps[idx].serial : swaps[0].serial;
       }
       return serial;
     }
 
-    final grandTotal =
-        order.items.fold<double>(0, (sum, i) => sum + i.total);
+    final grandTotal = order.items.asMap().entries.fold<double>(0, (sum, e) {
+      if (!isHome) return sum + e.value.total;
+      final idx = itemIdToIndex[e.value.id];
+      final qty = idx != null
+          ? (double.tryParse(_weightControllers[idx].text.trim()) ??
+              e.value.kgsLoaded)
+          : e.value.kgsLoaded;
+      return sum + (qty * e.value.unitPrice);
+    });
 
     // ── Customer/home receipt lines: serial, unit price, qty, amount ─
     final homeItemLines = order.items.asMap().entries.map((e) {
       final serial    = resolveSerial(e.value, e.key);
-      final qty       = e.value.kgsLoaded.toStringAsFixed(2);
+      final idx       = itemIdToIndex[e.value.id];
+      final qtyValue  = idx != null
+          ? (double.tryParse(_weightControllers[idx].text.trim()) ??
+              e.value.kgsLoaded)
+          : e.value.kgsLoaded;
+      final qty       = qtyValue.toStringAsFixed(2);
       final unitPrice = e.value.unitPrice.toStringAsFixed(2);
-      final lineTotal = e.value.total.toStringAsFixed(2);
+      final lineTotal = (qtyValue * e.value.unitPrice).toStringAsFixed(2);
       return 'Serial: $serial\n'
              '  Qty: $qty kg  @  \$$unitPrice/kg\n'
              '  Amount: \$$lineTotal';
@@ -438,8 +572,14 @@ class _DeliveryOrderDetailsScreenState
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
+    final isHome = order.typeLabel == 'HOME';
     final count = order.items.length;
     final hasDirty = _weightDirty.any((d) => d);
+    final totalKgs = isHome
+        ? _homeTotalKgsFor(order)
+        : (order.hasBobtail
+            ? (order.expectedKg ?? order.totalKg ?? order.totalKgsLoaded)
+            : order.totalKgsLoaded);
 
     return Scaffold(
       backgroundColor: _bg,
@@ -502,7 +642,7 @@ class _DeliveryOrderDetailsScreenState
                         Icons.propane_tank_outlined),
                     const SizedBox(width: 8),
                     _pill(
-                        '${(order.hasBobtail ? (order.expectedKg ?? order.totalKg ?? order.totalKgsLoaded) : order.totalKgsLoaded).toStringAsFixed(1)} kg total',
+                        '${totalKgs.toStringAsFixed(1)} kg total',
                         Icons.scale_outlined),
                   ],
                 ),
@@ -597,12 +737,15 @@ class _DeliveryOrderDetailsScreenState
                       const Icon(Icons.warning_amber_rounded,
                           size: 14, color: _amber),
                       const SizedBox(width: 6),
-                      const Text(
-                        'Some weights have unsaved changes',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: _amber,
-                            fontWeight: FontWeight.w500),
+                      Text(
+                        isHome
+                            ? 'Some quantities have unsaved changes'
+                            : 'Some weights have unsaved changes',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: _amber,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -671,6 +814,7 @@ class _DeliveryOrderDetailsScreenState
     final swaps = order.swapCylinders;
 
     if (isHome) {
+      final grandTotal = _homeGrandTotalFor(order);
       // Simple flat card — serial + KGs loaded per row
       return Container(
         decoration: BoxDecoration(
@@ -703,7 +847,7 @@ class _DeliveryOrderDetailsScreenState
                     ),
                   ),
                   Text(
-                    'KGs Loaded',
+                    'Qty / Amount',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -721,58 +865,235 @@ class _DeliveryOrderDetailsScreenState
 
               // Resolve serial from swap_cylinders if item has none
               String serial = item.trackingCode;
-              if (serial == 'N/A' && swaps.isNotEmpty) {
+              if (serial == 'LPG GAS' && swaps.isNotEmpty) {
                 serial = index < swaps.length
                     ? swaps[index].serial
                     : swaps[0].serial;
               }
 
-              final kgs = item.kgsLoaded.toStringAsFixed(2);
+              final qty = _homeQtyFor(item, index);
+              final unitPrice = item.unitPrice.toStringAsFixed(2);
+              final lineTotal = _homeLineTotalFor(item, index).toStringAsFixed(2);
               final isLast = index == order.items.length - 1;
+              final isEditing = _editingIndex == index;
+              final isDirty = _weightDirty[index];
 
               return Column(
                 children: [
-                  Padding(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
-                    child: Row(
+                    decoration: BoxDecoration(
+                      color: isEditing
+                          ? _blue.withValues(alpha: 0.03)
+                          : Colors.transparent,
+                    ),
+                    child: Column(
                       children: [
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            color: _navy.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: _navy,
-                              ),
+                        // Main row - fully clickable
+                        InkWell(
+                          onTap: isEditing ? null : () => _toggleEditQuantity(index),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Ink(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    color: isEditing
+                                        ? _blue
+                                        : _navy.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: isEditing ? Colors.white : _navy,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        serial,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: _text,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (!isEditing) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '@ \$$unitPrice/kg',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: _muted,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (!isEditing)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isDirty ? _amber : _border,
+                                        width: isDirty ? 1.5 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (isDirty)
+                                              const Padding(
+                                                padding:
+                                                    EdgeInsets.only(right: 4),
+                                                child: Icon(Icons.edit_rounded,
+                                                    size: 11, color: _amber),
+                                              ),
+                                            Text(
+                                              '${qty.toStringAsFixed(2)} kg',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                                color: isDirty ? _amber : _navy,
+                                                height: 1.0,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '\$$lineTotal',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDirty ? _amber : _green,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            serial,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _text,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '$kgs kg',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: _navy,
-                          ),
+                        // Expandable edit section
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          child: isEditing
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(width: 38), // Align with text
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _weightControllers[index],
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                  decimal: true),
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                            color: _navy,
+                                          ),
+                                          decoration: InputDecoration(
+                                            suffixText: 'kg',
+                                            suffixStyle: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: _muted,
+                                            ),
+                                            hintText: 'Enter quantity',
+                                            hintStyle: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFFCBD5E1),
+                                            ),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: const BorderSide(
+                                                color: _blue,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: const BorderSide(
+                                                color: _blue,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: const BorderSide(
+                                                color: _blue,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Apply button
+                                      GestureDetector(
+                                        onTap: () => _applyQuantityEdit(index),
+                                        child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            color: _green,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.check_rounded,
+                                            color: Colors.white,
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ],
                     ),
@@ -781,6 +1102,33 @@ class _DeliveryOrderDetailsScreenState
                 ],
               );
             }),
+            Divider(height: 1, color: _border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total Amount',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _muted,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '\$${grandTotal.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: _green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       );
@@ -811,9 +1159,9 @@ class _DeliveryOrderDetailsScreenState
       DeliveryOrderItem item, String productName, int index,
       {String? swapSerial}) {
     final isHome = widget.order.typeLabel == 'HOME';
-    final displaySerial = item.trackingCode != 'N/A'
+    final displaySerial = item.trackingCode != 'LPG GAS'
         ? item.trackingCode
-        : (swapSerial?.isNotEmpty == true ? swapSerial! : 'N/A');
+        : (swapSerial?.isNotEmpty == true ? swapSerial! : 'LPG GAS');
     final isOpen = _expandedIndex == index;
     final isDirty = !isHome && _weightDirty[index];
     final isSaving = !isHome && _weightSaving[index];
@@ -884,6 +1232,7 @@ class _DeliveryOrderDetailsScreenState
                             fontWeight: FontWeight.w600,
                             color: _text,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 1),
                         Text(
@@ -894,6 +1243,7 @@ class _DeliveryOrderDetailsScreenState
                             fontWeight: FontWeight.w500,
                             letterSpacing: 0.3,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -1225,9 +1575,10 @@ class _DeliveryOrderDetailsScreenState
 
   // ── Swap cylinder return section (home deliveries) ───────────────
   Widget _buildSwapReturnSection() {
+    final visibleAssignments = _returnableSwapAssignments();
     final returnedCount =
-        _swapAssignments.where((s) => s.isReturned).length;
-    final totalCount = _swapAssignments.length;
+        visibleAssignments.where((s) => s.isReturned).length;
+    final totalCount = visibleAssignments.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -1256,6 +1607,7 @@ class _DeliveryOrderDetailsScreenState
                       fontWeight: FontWeight.w700,
                       color: _text,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (_swapLoading)
@@ -1276,7 +1628,7 @@ class _DeliveryOrderDetailsScreenState
           ),
           Divider(height: 1, color: _border),
 
-          if (_swapLoading && _swapAssignments.isEmpty)
+          if (_swapLoading && visibleAssignments.isEmpty)
             const Padding(
               padding: EdgeInsets.all(20),
               child: Center(
@@ -1284,21 +1636,21 @@ class _DeliveryOrderDetailsScreenState
                     style: TextStyle(fontSize: 13, color: _muted)),
               ),
             )
-          else if (_swapAssignments.isEmpty)
+          else if (visibleAssignments.isEmpty)
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'No swap cylinders found for this delivery.',
+                'No returnable swap cylinders found for this delivery.',
                 style: TextStyle(fontSize: 13, color: _muted),
               ),
             )
           else
-            ..._swapAssignments.asMap().entries.map((e) {
+            ...visibleAssignments.asMap().entries.map((e) {
               final i = e.key;
               final swap = e.value;
               final isReturning =
                   _returningId[swap.assignmentId] == true;
-              final isLast = i == _swapAssignments.length - 1;
+              final isLast = i == visibleAssignments.length - 1;
 
               return Column(
                 children: [
@@ -1342,6 +1694,7 @@ class _DeliveryOrderDetailsScreenState
                                   fontWeight: FontWeight.w600,
                                   color: _text,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 swap.serial,
@@ -1350,6 +1703,7 @@ class _DeliveryOrderDetailsScreenState
                                   color: _muted,
                                   letterSpacing: 0.3,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               if (swap.isReturned &&
                                   swap.returnedAt != null)
@@ -1358,6 +1712,7 @@ class _DeliveryOrderDetailsScreenState
                                   style: const TextStyle(
                                       fontSize: 10,
                                       color: _green),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                             ],
                           ),
@@ -1438,12 +1793,15 @@ class _DeliveryOrderDetailsScreenState
               children: [
                 const Icon(Icons.swap_horiz_rounded, size: 15, color: _blue),
                 const SizedBox(width: 8),
-                Text(
-                  'Swap Cylinders (${swaps.length})',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _text,
+                Expanded(
+                  child: Text(
+                    'Swap Cylinders (${swaps.length})',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _text,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -1490,6 +1848,7 @@ class _DeliveryOrderDetailsScreenState
                                 fontWeight: FontWeight.w600,
                                 color: _text,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               s.serial,
@@ -1498,6 +1857,7 @@ class _DeliveryOrderDetailsScreenState
                                 color: _muted,
                                 letterSpacing: 0.3,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -1548,4 +1908,3 @@ class _DeliveryOrderDetailsScreenState
   }
 
 }
-

@@ -271,7 +271,7 @@ class DeliveryOrderItem {
     final tc = cylinder?.trackingCode;
     if (tc != null && tc.isNotEmpty) return tc;
     if (serial != null && serial!.isNotEmpty) return serial!;
-    return 'N/A';
+    return 'LPG GAS';
   }
 
   /// KGs loaded (product weight)
