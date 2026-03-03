@@ -53,6 +53,9 @@ class _DeliveryCompleteScreenState extends State<DeliveryCompleteScreen> {
   bool get _isHome =>
       widget.order.typeLabel == 'HOME';
 
+  bool get _isCommercial =>
+      widget.order.typeLabel == 'COMMERCIAL';
+
   Future<void> _printCustomer() async {
     setState(() {
       _customerPrinting = true;
@@ -133,7 +136,7 @@ class _DeliveryCompleteScreenState extends State<DeliveryCompleteScreen> {
     final totalKgs = totalKgsValue.toStringAsFixed(2);
     final recipientName =
         order.site?.name ?? order.customer?.name ?? 'Unknown';
-    final invoiceNo = widget.receiptData['invoiceNumber'] ?? 'N/A';
+    final invoiceNo = widget.receiptData['invoiceNumber'] ?? '-';
 
     return PopScope(
       // Prevent back-swipe returning to details; force use of Done button
@@ -227,16 +230,19 @@ class _DeliveryCompleteScreenState extends State<DeliveryCompleteScreen> {
                         ),
                         child: Column(
                           children: [
-                            _summaryRow(
-                                'Invoice',
-                                invoiceNo,
-                                Icons.receipt_long_outlined),
-                            _divider(),
-                            _summaryRow(
-                                'Cylinders',
-                                order.items.length.toString(),
-                                Icons.propane_tank_outlined),
-                            _divider(),
+                            // Hide Invoice and Cylinders for HOME and COMMERCIAL
+                            if (!(_isHome || _isCommercial)) ...[
+                              _summaryRow(
+                                  'Invoice',
+                                  invoiceNo,
+                                  Icons.receipt_long_outlined),
+                              _divider(),
+                              _summaryRow(
+                                  'Cylinders',
+                                  order.items.length.toString(),
+                                  Icons.propane_tank_outlined),
+                              _divider(),
+                            ],
                             _summaryRow(
                                 'Total KGs Delivered',
                                 '$totalKgs kg',
