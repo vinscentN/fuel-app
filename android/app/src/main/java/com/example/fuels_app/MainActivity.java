@@ -1408,8 +1408,7 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api("--------------------------------");
 
         // Delivery details
-        PrinterApi.PrnStr_Api("Request Code: " + requestCode);
-        PrinterApi.PrnStr_Api("Delivery Code: " + deliveryCode);
+        PrinterApi.PrnStr_Api("Order Number: " + requestCode);
         if (invoiceNumber != null && !invoiceNumber.isEmpty() && !invoiceNumber.equals("N/A")) {
             PrinterApi.PrnStr_Api("Invoice No: " + invoiceNumber);
         }
@@ -1420,20 +1419,15 @@ public class MainActivity extends FlutterActivity {
             PrinterApi.PrnStr_Api("Site Code: " + siteCode);
         }
         PrinterApi.PrnStr_Api("Driver: " + driverName);
-        PrinterApi.PrnStr_Api("Description: " + description);
-        PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
+        if (description != null && !description.isEmpty()) {
+            PrinterApi.PrnStr_Api("Description: " + description);
+        }
         PrinterApi.PrnStr_Api("--------------------------------");
 
-        // Cylinder details
+        // Cylinder details in table format
         if (cylinderDetails != null && !cylinderDetails.isEmpty()) {
             PrinterApi.PrnStr_Api(detailsLabel + ":");
-            PrinterApi.PrnStr_Api("\n");
-            String[] lines = cylinderDetails.split("\n");
-            for (String line : lines) {
-                if (line != null && !line.trim().isEmpty()) {
-                    PrinterApi.PrnStr_Api(line.trim());
-                }
-            }
+            PrinterApi.PrnStr_Api(cylinderDetails);
             PrinterApi.PrnStr_Api("--------------------------------");
         }
 
@@ -1447,9 +1441,6 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api("\n");
 
         // Footer
-        PrinterApi.PrnStr_Api("\n");
-        PrinterApi.PrnStr_Api(centerText("Refilled cylinders"));
-        PrinterApi.PrnStr_Api(centerText("delivered successfully"));
         PrinterApi.PrnStr_Api("\n");
         PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
         PrinterApi.PrnStr_Api("\n\n\n");

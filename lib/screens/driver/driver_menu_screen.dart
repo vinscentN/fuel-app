@@ -127,37 +127,9 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              _buildMenuTile(
-                icon: Icons.receipt_long_rounded,
-                title: 'PURCHASE ORDERS',
-                subtitle: 'View all pending purchase orders',
-                color: const Color(0xFF0EA5E9),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PendingFillRequestsScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildMenuTile(
-                icon: Icons.qr_code_scanner,
-                title: 'CYLINDER COLLECTIONS',
-                subtitle: 'View prepared cylinders for pickup',
-                color: const Color(0xFF6366F1),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const DriverCollectionsScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
               _buildMenuTile(
                 icon: Icons.local_shipping_outlined,
                 title: 'DELIVERIES',
@@ -171,7 +143,36 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              _buildMenuTile(
+                icon: Icons.qr_code_scanner,
+                title: 'CYLINDER COLLECTIONS',
+                subtitle: 'View prepared cylinders for pickup',
+                color: const Color(0xFF6366F1),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DriverCollectionsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              // Hidden for now
+              // _buildMenuTile(
+              //   icon: Icons.receipt_long_rounded,
+              //   title: 'PURCHASE ORDERS',
+              //   subtitle: 'View all pending purchase orders',
+              //   color: const Color(0xFF0EA5E9),
+              //   onTap: () {
+              //     Navigator.of(context).push(
+              //       MaterialPageRoute(
+              //         builder: (_) => const PendingFillRequestsScreen(),
+              //       ),
+              //     );
+              //   },
+              // ),
+              // const SizedBox(height: 10),
               _buildMenuTile(
                 icon: Icons.system_update_alt,
                 title: 'CHECK UPDATES',
@@ -202,12 +203,12 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -215,15 +216,15 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 // Modern icon container with color
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -233,22 +234,22 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                         color,
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        color: color.withOpacity(0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
                   child: Icon(
                     icon,
                     color: Colors.white,
-                    size: 28,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 // Title and subtitle
                 Expanded(
                   child: Column(
@@ -257,21 +258,21 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
-                          letterSpacing: 0.3,
+                          letterSpacing: 0.2,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 11,
                           color: Colors.grey[600],
-                          height: 1.3,
+                          height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -284,7 +285,7 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: Colors.grey[400],
-                  size: 18,
+                  size: 16,
                 ),
               ],
             ),
