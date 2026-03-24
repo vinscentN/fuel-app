@@ -6,6 +6,7 @@ import 'session_expiry_service.dart';
 
 const _kConnectivityMessage =
     'The device lost internet connection and failed to finish the process.';
+const _kRequestTimeout = Duration(seconds: 60);
 
 class ApiClient {
   final Map<String, String> defaultHeaders = const {
@@ -26,7 +27,7 @@ class ApiClient {
         Uri.parse(url),
         headers: {...defaultHeaders, ...?headers},
         body: jsonEncode(body ?? {}),
-      );
+      ).timeout(_kRequestTimeout);
       _logResponse(response);
       return await _processResponse(response);
     } on SocketException catch (_) {
@@ -48,7 +49,7 @@ class ApiClient {
       final response = await http.get(
         Uri.parse(url),
         headers: {...defaultHeaders, ...?headers},
-      );
+      ).timeout(_kRequestTimeout);
       _logResponse(response);
       return await _processResponse(response);
     } on SocketException catch (_) {
@@ -73,7 +74,7 @@ class ApiClient {
         Uri.parse(url),
         headers: {...defaultHeaders, ...?headers},
         body: jsonEncode(body ?? {}),
-      );
+      ).timeout(_kRequestTimeout);
       _logResponse(response);
       return await _processResponse(response);
     } on SocketException catch (_) {
@@ -98,7 +99,7 @@ class ApiClient {
         Uri.parse(url),
         headers: {...defaultHeaders, ...?headers},
         body: jsonEncode(body ?? {}),
-      );
+      ).timeout(_kRequestTimeout);
       _logResponse(response);
       return await _processResponse(response);
     } on SocketException catch (_) {

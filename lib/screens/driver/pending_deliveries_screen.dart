@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/gas_order_service.dart';
 import '../../utils/colors.dart';
 import 'delivery_qr_code_screen.dart';
+import 'driver_ui.dart';
 
 class PendingDeliveriesScreen extends StatefulWidget {
   final String? deliveryType;
@@ -93,17 +94,17 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text(widget.deliveryType != null
-            ? '${widget.deliveryType} DELIVERIES'
-            : 'DELIVERIES'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 1,
+      backgroundColor: driverBg,
+      appBar: buildDriverAppBar(
+        context,
+        title: widget.deliveryType != null
+            ? '${widget.deliveryType} Deliveries'
+            : 'Deliveries',
+        subtitle: 'Pending deliveries awaiting action',
+        icon: Icons.local_shipping_outlined,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
             onPressed: _loadPendingDeliveries,
           ),
         ],
@@ -111,77 +112,33 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.black87),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadPendingDeliveries,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                        ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
+              ? DriverErrorState(
+                  message: _error!,
+                  onRetry: _loadPendingDeliveries,
                 )
               : _filteredDeliveries.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.local_shipping_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No pending deliveries',
-                            style: TextStyle(
-                              color: Colors.black54,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _loadPendingDeliveries,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Refresh'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                  ? DriverEmptyState(
+                      icon: Icons.local_shipping_outlined,
+                      message: 'No pending deliveries',
+                      actionText: 'Refresh',
+                      onAction: _loadPendingDeliveries,
                     )
                   : RefreshIndicator(
                       onRefresh: _loadPendingDeliveries,
-                      color: AppColors.primary,
+                      color: driverNavy,
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
                         itemCount: _filteredDeliveries.length,
                         itemBuilder: (context, index) {
                           final order = _filteredDeliveries[index];
 
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
+                            margin: const EdgeInsets.only(bottom: 10),
                             color: Colors.white,
-                            elevation: 2,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
+                              side: const BorderSide(color: Color(0xFFE8EDF5)),
                             ),
                             child: InkWell(
                               onTap: () => _viewQRCode(order),
@@ -198,9 +155,9 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
                                           child: Text(
                                             order.requestCode,
                                             style: const TextStyle(
-                                              color: Colors.black87,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                              color: driverNavy,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
                                             ),
                                           ),
                                         ),
@@ -228,15 +185,15 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 10),
                                     Text(
                                       order.description,
                                       style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontSize: 14,
+                                        color: driverMuted,
+                                        fontSize: 12,
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 10),
                                     Row(
                                       children: [
                                         Icon(
@@ -245,13 +202,13 @@ class _PendingDeliveriesScreenState extends State<PendingDeliveriesScreen> {
                                           size: 16,
                                         ),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          order.site.name,
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 13,
+                                          Text(
+                                            order.site.name,
+                                            style: const TextStyle(
+                                              color: driverMuted,
+                                              fontSize: 12,
+                                            ),
                                           ),
-                                        ),
                                         const SizedBox(width: 16),
                                         Icon(
                                           Icons.propane_tank,

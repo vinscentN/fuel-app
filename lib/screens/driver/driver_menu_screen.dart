@@ -9,6 +9,7 @@ import '../common/check_updates_screen.dart';
 import '../collections/driver_collections_screen.dart';
 import 'pending_fill_requests_screen.dart';
 import 'deliveries_menu_screen.dart';
+import 'driver_ui.dart';
 
 class DriverMenuScreen extends StatefulWidget {
   const DriverMenuScreen({super.key});
@@ -88,48 +89,33 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.modernGradient,
+      appBar: buildDriverAppBar(
+        context,
+        title: 'Driver Flow',
+        subtitle: 'Deliveries, collections and updates',
+        icon: Icons.local_shipping_rounded,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+            tooltip: 'Logout',
+            onPressed: () => _handleLogout(context),
           ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: false,
-            title: const Text(
-              'GASMATE',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.5,
-                fontFamily: 'Sans-serif',
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.logout_rounded),
-                tooltip: 'Logout',
-                onPressed: () => _handleLogout(context),
-              ),
-              IconButton(
-                icon: const Icon(Icons.menu_rounded),
-                tooltip: 'Menu',
-                onPressed: () => _showProfileBottomSheet(context),
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 20),
+            tooltip: 'Menu',
+            onPressed: () => _showProfileBottomSheet(context),
           ),
-        ),
+        ],
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: driverBg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const DriverSectionLabel('DRIVER MENU'),
+              const SizedBox(height: 8),
               _buildMenuTile(
                 icon: Icons.local_shipping_outlined,
                 title: 'DELIVERIES',
@@ -200,18 +186,8 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return DriverCard(
+      padding: EdgeInsets.zero,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -221,36 +197,20 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Modern icon container with color
                 Container(
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        color.withOpacity(0.9),
-                        color,
-                      ],
-                    ),
+                    color: color.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.25),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: Icon(
                     icon,
-                    color: Colors.white,
-                    size: 22,
+                    color: color,
+                    size: 20,
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Title and subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,8 +219,8 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                         title,
                         style: const TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          color: driverNavy,
                           letterSpacing: 0.2,
                         ),
                         maxLines: 1,
@@ -271,7 +231,7 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                         subtitle,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[600],
+                          color: driverMuted,
                           height: 1.2,
                         ),
                         maxLines: 2,
@@ -284,8 +244,8 @@ class _DriverMenuScreenState extends State<DriverMenuScreen> {
                 // Arrow icon
                 Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: Colors.grey[400],
-                  size: 16,
+                  color: driverMuted,
+                  size: 15,
                 ),
               ],
             ),
@@ -374,7 +334,7 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'GASMATE',
+                            'GASMAN',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,

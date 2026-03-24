@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/delivery_order_service.dart';
 import '../../utils/colors.dart';
 import 'delivery_order_details_screen.dart';
+import 'driver_ui.dart';
 
 /// Delivery type constants
 class DeliveryType {
@@ -77,11 +78,11 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
   Color get _typeColor {
     switch (widget.deliveryType) {
       case DeliveryType.home:
-        return const Color(0xFF334155); // Soft navy
+        return const Color(0xFF0F274F);
       case DeliveryType.commercial:
-        return const Color(0xFFFF9800);
+        return const Color(0xFFC96B00);
       default:
-        return const Color(0xFF0EA5E9);
+        return const Color(0xFF005F8F);
     }
   }
 
@@ -123,35 +124,20 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: const BoxDecoration(gradient: AppColors.modernGradient),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: false,
-            title: Text(
-              '${widget.deliveryType} DELIVERIES',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.2,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                tooltip: 'Refresh',
-                onPressed: _load,
-              ),
-            ],
+      appBar: buildDriverAppBar(
+        context,
+        title: '${widget.deliveryType} Deliveries',
+        subtitle: 'Assigned delivery orders',
+        icon: _typeIcon,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+            tooltip: 'Refresh',
+            onPressed: _load,
           ),
-        ),
+        ],
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: driverBg,
       body: _buildBody(),
     );
   }
@@ -164,70 +150,23 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 56, color: Colors.red[300]),
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[700], fontSize: 14),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _load,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _typeColor,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return DriverErrorState(message: _error!, onRetry: _load);
     }
 
     if (_orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(_typeIcon, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text(
-              'No ${widget.deliveryType.toLowerCase()} deliveries',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[500],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _typeColor,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+      return DriverEmptyState(
+        icon: _typeIcon,
+        message: 'No ${widget.deliveryType.toLowerCase()} deliveries',
+        actionText: 'Refresh',
+        onAction: _load,
       );
     }
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: _typeColor,
+      color: driverNavy,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
         itemCount: _orders.length,
         itemBuilder: (context, index) => _buildOrderCard(_orders[index]),
       ),
@@ -249,13 +188,7 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFE8EDF5)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -311,7 +244,7 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
                                 'Order #${order.id}',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.grey[500],
+                                  color: const Color(0xFF5B6B84),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -348,7 +281,7 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
                             order.deliveryAddress,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: const Color(0xFF4B5565),
                               fontWeight: FontWeight.w500,
                             ),
                             maxLines: 1,
@@ -405,7 +338,7 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.scale,
-                                    size: 14, color: Colors.grey[700]),
+                                    size: 14, color: const Color(0xFF445166)),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
@@ -413,7 +346,7 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.grey[700],
+                                      color: const Color(0xFF445166),
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -467,20 +400,15 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: _typeColor.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           onTap: () async {
             final updated = await Navigator.of(context).push<bool>(
               MaterialPageRoute(
@@ -490,191 +418,164 @@ class _DeliveryOrdersScreenState extends State<DeliveryOrdersScreen> {
             if (updated == true) _load();
           },
           child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white,
-                  _typeColor.withValues(alpha: 0.04),
-                ],
-              ),
-              border: Border.all(
-                color: _typeColor.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-            child: Row(
+            child: Column(
               children: [
-                // Left accent bar
                 Container(
-                  width: 5,
-                  height: 72,
+                  height: 4,
                   decoration: BoxDecoration(
+                    color: _typeColor,
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      bottomLeft: Radius.circular(14),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [_typeColor, _typeColor.withValues(alpha: 0.5)],
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Main content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      order.recipientName,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (order.hasBobtail) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFF9800),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.local_shipping_outlined,
-                                              size: 10, color: Colors.white),
-                                          SizedBox(width: 3),
-                                          Text(
-                                            'BOBTAIL',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.white,
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on_outlined,
-                                      size: 11, color: Colors.grey[400]),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      order.deliveryAddress,
-                                      style: TextStyle(
-                                          fontSize: 11, color: Colors.grey[500]),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (date.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    Icon(Icons.calendar_today_outlined,
-                                        size: 11, color: Colors.grey[400]),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      date,
-                                      style: TextStyle(
-                                          fontSize: 11, color: Colors.grey[500]),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Right stats column
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _typeColor,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.propane_tank_outlined,
-                                      size: 12, color: Colors.white),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '$count',
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    order.recipientName,
                                     style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (order.hasBobtail) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFF9800),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.local_shipping_outlined,
+                                            size: 10, color: Colors.white),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'BOBTAIL',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 5),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                                  width: 1,
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_outlined,
+                                    size: 11, color: Colors.grey[400]),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    order.deliveryAddress,
+                                    style: TextStyle(
+                                        fontSize: 11, color: const Color(0xFF4B5565)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                '${totalKg.toStringAsFixed(1)} kg',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF6366F1),
-                                ),
-                              ),
+                              ],
                             ),
+                            if (date.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today_outlined,
+                                      size: 11, color: Colors.grey[400]),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    date,
+                                    style: TextStyle(
+                                        fontSize: 11, color: const Color(0xFF5B6B84)),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
-                        const SizedBox(width: 10),
-                        Icon(Icons.arrow_forward_ios_rounded,
-                            size: 13, color: Colors.grey[400]),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _typeColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.propane_tank_outlined,
+                                    size: 12, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$count',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              '${totalKg.toStringAsFixed(1)} kg',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF6366F1),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 13, color: Colors.grey[400]),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
               ],
             ),
           ),

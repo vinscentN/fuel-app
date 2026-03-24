@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/generator_log_service.dart';
 import '../../utils/colors.dart';
-import '../../widgets/common/app_bar_widget.dart';
 import '../../widgets/common/custom_button.dart';
 
 class GeneratorLogScreen extends StatefulWidget {
@@ -15,6 +14,10 @@ class GeneratorLogScreen extends StatefulWidget {
 }
 
 class _GeneratorLogScreenState extends State<GeneratorLogScreen> {
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyBg = Color(0xFFF0F4FA);
+  static const _navyMuted = Color(0xFF6B80A0);
+
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
   final _generatorLogService = GeneratorLogService();
@@ -36,105 +39,51 @@ class _GeneratorLogScreenState extends State<GeneratorLogScreen> {
       initialDate: _startTime ?? now,
       firstDate: DateTime(now.year - 1),
       lastDate: now,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
-
     if (selectedDate == null || !mounted) return;
 
     final selectedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_startTime ?? now),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
+    if (selectedTime == null) return;
 
-    if (selectedTime != null) {
-      setState(() {
-        _startTime = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-          selectedTime.hour,
-          selectedTime.minute,
-        );
-      });
-    }
+    setState(() {
+      _startTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+    });
   }
 
   Future<void> _selectEndTime() async {
     final now = DateTime.now();
-    final initialDate = _endTime ?? _startTime ?? now;
-
     final selectedDate = await showDatePicker(
       context: context,
-      initialDate: initialDate,
+      initialDate: _endTime ?? _startTime ?? now,
       firstDate: _startTime ?? DateTime(now.year - 1),
       lastDate: now,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
-
     if (selectedDate == null || !mounted) return;
 
     final selectedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_endTime ?? now),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
+    if (selectedTime == null) return;
 
-    if (selectedTime != null) {
-      setState(() {
-        _endTime = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-          selectedTime.hour,
-          selectedTime.minute,
-        );
-      });
-    }
+    setState(() {
+      _endTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+    });
   }
 
   String _formatDateTime(DateTime? dateTime) {
@@ -144,61 +93,38 @@ class _GeneratorLogScreenState extends State<GeneratorLogScreen> {
 
   String _calculateDuration() {
     if (_startTime == null || _endTime == null) return '';
-
     final duration = _endTime!.difference(_startTime!);
     if (duration.isNegative) return 'Invalid duration';
-
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    return 'Duration: ${hours}h ${minutes}m';
+    return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
   }
 
   Future<void> _submitLog() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_startTime == null) {
+    if (!_formKey.currentState!.validate()) return;
+    if (_startTime == null || _endTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select start time'),
-          backgroundColor: Colors.red,
+          content: Text('Please select both start and end time'),
+          backgroundColor: AppColors.error,
         ),
       );
       return;
     }
-
-    if (_endTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select end time'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     if (_endTime!.isBefore(_startTime!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('End time must be after start time'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
-
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.token;
+      final token = context.read<AuthProvider>().token;
+      if (token == null) throw Exception('Not authenticated');
 
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final response = await _generatorLogService.submitGeneratorLog(
+      await _generatorLogService.submitGeneratorLog(
         startTime: _startTime!,
         endTime: _endTime!,
         notes: _notesController.text.trim(),
@@ -206,321 +132,248 @@ class _GeneratorLogScreenState extends State<GeneratorLogScreen> {
       );
 
       if (!mounted) return;
-
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Generator usage log submitted successfully'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+          backgroundColor: AppColors.success,
         ),
       );
 
-      // Clear form
       _notesController.clear();
       setState(() {
         _startTime = null;
         _endTime = null;
       });
-
-      // Navigate back after a short delay
       await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+      if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        title: 'Generator Usage Log',
-        backgroundColor: AppColors.primary,
+      backgroundColor: _navyBg,
+      appBar: _buildAppBar(context),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+          children: [
+            const Text(
+              'GENERATOR LOG',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: _navyMuted,
+                letterSpacing: 1.1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE8EDF5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    _timeTile('Start Time', _formatDateTime(_startTime), _selectStartTime),
+                    const SizedBox(height: 8),
+                    _timeTile('End Time', _formatDateTime(_endTime), _selectEndTime),
+                    if (_startTime != null && _endTime != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _navy.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.timer_rounded, size: 16, color: _navy),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Duration: ${_calculateDuration()}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _navy,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _notesController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        labelText: 'Notes (Optional)',
+                        labelStyle: const TextStyle(fontSize: 12, color: _navyMuted),
+                        hintText: 'Add any relevant notes...',
+                        isDense: true,
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFD),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE8EDF5)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE8EDF5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: _navy, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            CustomButton(
+              onPressed: _isSubmitting ? null : _submitLog,
+              backgroundColor: AppColors.primary,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Submit Log',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+            ),
+          ],
+        ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _navy,
+          border: Border(bottom: BorderSide(color: Color(0x22FFFFFF), width: 1)),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
               children: [
-                // Header card
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.power,
-                            color: AppColors.primary,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Track Generator Usage',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Log generator start and end times',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+                  splashRadius: 20,
                 ),
-                const SizedBox(height: 24),
-
-                // Start Time
-                Text(
-                  'Start Time',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.power_rounded, color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Generator Usage',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: _selectStartTime,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          color: _startTime != null
-                              ? AppColors.primary
-                              : Colors.grey,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _formatDateTime(_startTime),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: _startTime != null
-                                  ? AppColors.textPrimary
-                                  : Colors.grey,
-                              fontWeight: _startTime != null
-                                  ? FontWeight.w500
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // End Time
-                Text(
-                  'End Time',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                      Text(
+                        'Log generator running times',
+                        style: TextStyle(fontSize: 10, color: Color(0x99FFFFFF)),
                       ),
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: _selectEndTime,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          color:
-                              _endTime != null ? AppColors.primary : Colors.grey,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _formatDateTime(_endTime),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: _endTime != null
-                                  ? AppColors.textPrimary
-                                  : Colors.grey,
-                              fontWeight: _endTime != null
-                                  ? FontWeight.w500
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Duration display
-                if (_startTime != null && _endTime != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.timer,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _calculateDuration(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 24),
-
-                // Notes field
-                Text(
-                  'Notes (Optional)',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                ),
-                const SizedBox(height: 12),
-
-                TextFormField(
-                  controller: _notesController,
-                  maxLines: 4,
-                  style: const TextStyle(color: Colors.black87),
-                  decoration: InputDecoration(
-                    hintText: 'Add any relevant notes about generator usage...',
-                    hintStyle: const TextStyle(color: Colors.black38),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Submit button
-                CustomButton(
-                  onPressed: _isSubmitting ? null : _submitLog,
-                  backgroundColor: AppColors.primary,
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Submit Log',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Cancel button
-                TextButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _timeTile(String title, String value, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFD),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE8EDF5)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: _navy.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.access_time_rounded, size: 16, color: _navy),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 11, color: _navyMuted),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _navy,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, size: 18, color: _navyMuted),
+            ],
           ),
         ),
       ),

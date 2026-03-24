@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/pos_provider.dart';
 import '../../services/delivery_order_service.dart';
 import 'delivery_complete_screen.dart';
+import 'driver_ui.dart';
 
 class DeliveryOrderDetailsScreen extends StatefulWidget {
   final DeliveryOrder order;
@@ -809,7 +810,7 @@ class _DeliveryOrderDetailsScreenState
       'cylinderDetails':         cylinderDetails,
       'customerCylinderDetails': customerCylinderDetails,
       'customerName':            customerName,
-      'description':             order.notes ?? (isHome ? 'Home' : (isCommercial ? 'Commercial' : order.typeLabel)),
+      'description':             '',
       // Home & Commercial: siteName = customer name (printed as "Customer: X", stationName is blank)
       // Retail/site: siteName is blank because stationName already prints the name centred at top
       'siteName':                (isHome || isCommercial) ? customerName : '',
@@ -868,27 +869,15 @@ class _DeliveryOrderDetailsScreenState
 
     return Scaffold(
       backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(order.recipientName,
-                style:
-                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                overflow: TextOverflow.ellipsis),
-            Text(order.deliveryAddress,
-                style:
-                    const TextStyle(fontSize: 11, color: Colors.white54),
-                overflow: TextOverflow.ellipsis),
-          ],
-        ),
+      appBar: buildDriverAppBar(
+        context,
+        title: order.recipientName,
+        subtitle: order.deliveryAddress,
+        icon: Icons.receipt_long_rounded,
         actions: [
           if (order.hasBobtail)
             Container(
-              margin: const EdgeInsets.only(right: 12),
+              margin: const EdgeInsets.only(right: 12, top: 10, bottom: 10),
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

@@ -17,6 +17,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -1290,7 +1291,6 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api("Site: " + siteName);
         PrinterApi.PrnStr_Api("Site Code: " + siteCode);
         PrinterApi.PrnStr_Api("Driver: " + driverName);
-        PrinterApi.PrnStr_Api("Description: " + description);
         PrinterApi.PrnStr_Api("Cylinders: " + cylinderCount);
         PrinterApi.PrnStr_Api("--------------------------------");
 
@@ -1395,7 +1395,7 @@ public class MainActivity extends FlutterActivity {
         if (stationName != null && !stationName.isEmpty()) {
             PrinterApi.PrnStr_Api(centerText(stationName));
         }
-        if (address != null && !address.isEmpty()) {
+        if (address != null && !address.isEmpty() && !sameReceiptValue(address, stationName)) {
             PrinterApi.PrnStr_Api(centerText(address));
         }
         if (phone != null && !phone.isEmpty()) {
@@ -1419,9 +1419,6 @@ public class MainActivity extends FlutterActivity {
             PrinterApi.PrnStr_Api("Site Code: " + siteCode);
         }
         PrinterApi.PrnStr_Api("Driver: " + driverName);
-        if (description != null && !description.isEmpty()) {
-            PrinterApi.PrnStr_Api("Description: " + description);
-        }
         PrinterApi.PrnStr_Api("--------------------------------");
 
         // Cylinder details in table format
@@ -1445,6 +1442,16 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
         PrinterApi.PrnStr_Api("\n\n\n");
         PrinterApi.PrnStart_Api();
+    }
+
+    private boolean sameReceiptValue(String first, String second) {
+        if (first == null || second == null) {
+            return false;
+        }
+
+        String normalizedFirst = first.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        String normalizedSecond = second.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return !normalizedFirst.isEmpty() && normalizedFirst.equals(normalizedSecond);
     }
 
     private Bitmap loadScaledLogo() {

@@ -4,6 +4,7 @@ import '../../models/site_collection_group.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/gas_order_service.dart';
 import '../../utils/colors.dart';
+import '../driver/driver_ui.dart';
 
 class DriverCollectionsScreen extends StatefulWidget {
   const DriverCollectionsScreen({super.key});
@@ -162,68 +163,89 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
     final pendingToday = _todaySummary(_pending, now);
     final pickedUpToday = _todaySummary(_pickedUp, now);
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.modernGradient,
+      backgroundColor: driverBg,
+      appBar: buildDriverAppBar(
+        context,
+        title: 'Cylinder Collections',
+        subtitle: 'Pending and picked up batches',
+        icon: Icons.propane_tank_outlined,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+            onPressed: _loadPending,
+            splashRadius: 20,
           ),
-          child: AppBar(
-            title: const Text(
-              'Cylinder Collections',
-              style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.3),
-            ),
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                onPressed: _loadPending,
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.black87),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadPending,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
+              ? DriverErrorState(
+                  message: _error!,
+                  onRetry: _loadPending,
                 )
               : DefaultTabController(
                   length: 2,
                   child: Column(
                     children: [
                       _buildTodaySummary(pendingToday, pickedUpToday),
-                      const TabBar(
-                        labelColor: AppColors.primary,
-                        unselectedLabelColor: Colors.black54,
-                        indicatorColor: AppColors.primary,
-                        tabs: [
-                          Tab(text: 'Pending'),
-                          Tab(text: 'Picked Up'),
-                        ],
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE8EDF5)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: driverNavy.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const TabBar(
+                          dividerColor: Colors.transparent,
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Color(0xFF51627C),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          indicator: BoxDecoration(
+                            color: driverNavy,
+                            borderRadius: BorderRadius.all(Radius.circular(9)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0x220D2B55),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          labelPadding: EdgeInsets.symmetric(vertical: 7),
+                          labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                          unselectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                          tabs: [
+                            Tab(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.pending_actions_rounded, size: 12),
+                                  SizedBox(width: 4),
+                                  Text('Pending'),
+                                ],
+                              ),
+                            ),
+                            Tab(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.task_alt_rounded, size: 12),
+                                  SizedBox(width: 4),
+                                  Text('Picked Up'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Expanded(
                         child: TabBarView(
@@ -241,33 +263,21 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
 
   Widget _buildTodaySummary(Map<String, int> pending, Map<String, int> pickedUp) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: DriverCard(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
+                color: driverNavy.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(Icons.today, color: AppColors.primary),
+              child: const Icon(Icons.today_rounded, color: driverNavy, size: 18),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,20 +285,20 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                   const Text(
                     'Today Summary',
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: driverNavy,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
-                    'Pending: ${pending['batches']} collections ? ${pending['cylinders']} cylinders',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    'Pending: ${pending['batches']} batches, ${pending['cylinders']} cylinders',
+                    style: const TextStyle(fontSize: 11, color: driverMuted),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Picked Up: ${pickedUp['batches']} collections ? ${pickedUp['cylinders']} cylinders',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    'Picked up: ${pickedUp['batches']} batches, ${pickedUp['cylinders']} cylinders',
+                    style: const TextStyle(fontSize: 11, color: driverMuted),
                   ),
                 ],
               ),
@@ -301,11 +311,11 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
 
   Widget _buildPendingTab() {
     if (_pending.isEmpty) {
-      return const Center(
-        child: Text(
-          'No pending collections',
-          style: TextStyle(color: Colors.black54),
-        ),
+      return DriverEmptyState(
+        icon: Icons.inventory_2_outlined,
+        message: 'No pending collections',
+        actionText: 'Refresh',
+        onAction: _loadPending,
       );
     }
 
@@ -313,7 +323,7 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
       children: [
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             itemCount: _pending.length,
             itemBuilder: (context, index) {
               final item = _pending[index];
@@ -323,21 +333,15 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                   : 'Station ${item.serviceStationId}';
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE8EDF5)),
                 ),
                 child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                   leading: Checkbox(
                     value: selected,
                     onChanged: (value) {
@@ -345,14 +349,14 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                         _selected[item.collectionReference] = value ?? false;
                       });
                     },
-                    activeColor: AppColors.primary,
+                    activeColor: driverNavy,
                   ),
                   title: Text(
                     item.collectionReference,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: driverNavy,
                     ),
                   ),
                   subtitle: Padding(
@@ -363,16 +367,16 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                         Text(
                           stationName,
                           style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 13,
+                            color: driverMuted,
+                            fontSize: 12,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${item.count} cylinder${item.count != 1 ? 's' : ''} • ${_formatDateTime(item.preparedAt)}',
                           style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 12,
+                            color: driverNavy,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -386,8 +390,8 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                         child: Text(
                           'Remarks: ${item.remarks}',
                           style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
+                            color: driverMuted,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -398,22 +402,22 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                           final t = c.cylinder;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(9),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(color: const Color(0xFFE8EDF5)),
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  width: 36,
-                                  height: 36,
+                                  width: 32,
+                                  height: 32,
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.12),
+                                    color: driverNavy.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(Icons.propane_tank, color: AppColors.primary, size: 18),
+                                  child: const Icon(Icons.propane_tank, color: driverNavy, size: 16),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -423,17 +427,17 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                                       Text(
                                         t.trackingCode ?? t.name,
                                         style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textPrimary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1E293B),
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         '${t.cylinderType?.name ?? "TW"} - ${t.capacity.toStringAsFixed(2)} ${t.unit}',
                                         style: const TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.black54,
+                                          fontSize: 10,
+                                          color: driverMuted,
                                         ),
                                       ),
                                     ],
@@ -445,17 +449,17 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                                     Text(
                                       '${c.currentWeight} ${t.unit}',
                                       style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1E293B),
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       'BE ${c.bottomEdgeWeight} ${t.unit}',
                                       style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.primary,
+                                        fontSize: 10,
+                                        color: driverNavy,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -473,16 +477,10 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
           decoration: BoxDecoration(
             color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
-              ),
-            ],
+            border: Border(top: BorderSide(color: const Color(0xFFE8EDF5))),
           ),
           child: SafeArea(
             child: SizedBox(
@@ -502,16 +500,16 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                 label: Text(
                   _isConfirming ? 'Confirming...' : 'Confirm Pickup',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: driverNavy,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
@@ -524,16 +522,16 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
 
   Widget _buildPickedUpTab() {
     if (_pickedUp.isEmpty) {
-      return const Center(
-        child: Text(
-          'No picked up collections',
-          style: TextStyle(color: Colors.black54),
-        ),
+      return DriverEmptyState(
+        icon: Icons.check_circle_outline_rounded,
+        message: 'No picked up collections',
+        actionText: 'Refresh',
+        onAction: _loadPending,
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       itemCount: _pickedUp.length,
       itemBuilder: (context, index) {
         final item = _pickedUp[index];
@@ -542,27 +540,21 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
             : 'Station ${item.serviceStationId}';
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE8EDF5)),
           ),
           child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             title: Text(
               item.collectionReference,
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: driverNavy,
               ),
             ),
             subtitle: Padding(
@@ -573,8 +565,8 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                   Text(
                     stationName,
                     style: const TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
+                      color: driverMuted,
+                      fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -596,8 +588,8 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                   child: Text(
                     'Remarks: ${item.remarks}',
                     style: const TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12,
+                      color: driverMuted,
+                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -608,22 +600,22 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                     final t = c.cylinder;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(9),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: const Color(0xFFE8EDF5)),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            width: 36,
-                            height: 36,
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.12),
+                              color: driverNavy.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.propane_tank, color: AppColors.primary, size: 18),
+                            child: const Icon(Icons.propane_tank, color: driverNavy, size: 16),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -631,19 +623,19 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  t.trackingCode ?? t.name,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                                t.trackingCode ?? t.name,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1E293B),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${t.cylinderType?.name ?? "N/A"} • ${t.capacity.toStringAsFixed(0)} ${t.unit}',
                                   style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black54,
+                                    fontSize: 10,
+                                    color: driverMuted,
                                   ),
                                 ),
                               ],
@@ -654,18 +646,18 @@ class _DriverCollectionsScreenState extends State<DriverCollectionsScreen> {
                             children: [
                               Text(
                                 '${c.currentWeight} ${t.unit}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1E293B),
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'BE ${c.bottomEdgeWeight} ${t.unit}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.primary,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: driverNavy,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

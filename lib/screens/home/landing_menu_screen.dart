@@ -22,6 +22,10 @@ class LandingMenuScreen extends StatefulWidget {
 class _LandingMenuScreenState extends State<LandingMenuScreen> {
   bool _checkedAuth = false;
 
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyBg = Color(0xFFF0F4FA);
+  static const _navyMuted = Color(0xFF6B80A0);
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +39,7 @@ class _LandingMenuScreenState extends State<LandingMenuScreen> {
     if (!auth.isAuthenticated || auth.currentUser == null) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MobileLoginScreen()),
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -45,446 +49,277 @@ class _LandingMenuScreenState extends State<LandingMenuScreen> {
     final user = auth.currentUser;
 
     if (!auth.isDeviceActive) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Device not activated')),
-      );
+      _showSnack('Device not activated');
       return;
     }
-
     if (user == null || user.serviceStationId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Service station not found')),
-      );
+      _showSnack('Service station not found');
       return;
     }
 
-    // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+            strokeWidth: 2, color: _navy),
       ),
     );
 
-    // Fetch products by service station ID
-    print('[LandingMenu] SALE tapped. Fetching products for station: ${user.serviceStationId}');
     await auth.fetchProductsByStation();
-    print('[LandingMenu] Products available after fetch: ${auth.products.length}');
-
     if (!mounted) return;
-
-    // Close loading indicator
     Navigator.of(context).pop();
-
-    // Navigate to dashboard
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
     );
   }
 
   Future<void> _handleLogout() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _navy.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.logout_rounded,
+                        color: _navy, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Logout',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: _navy)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text('Are you sure you want to logout?',
+                  style: TextStyle(
+                      fontSize: 13, color: _navyMuted, height: 1.4)),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _navyMuted,
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                              color: _navyMuted.withOpacity(0.3)),
+                        ),
+                      ),
+                      child: const Text('Cancel',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: TextButton.styleFrom(
+                        backgroundColor: _navy,
+                        foregroundColor: Colors.white,
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Logout',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
       ),
     );
 
     if (confirmed == true && mounted) {
+      final authProvider =
+      Provider.of<AuthProvider>(context, listen: false);
       await authProvider.logout();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MobileLoginScreen()),
-        (route) => false,
+            (route) => false,
       );
     }
   }
 
-  void _showProfileBottomSheet(BuildContext context) {
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(12),
+      ),
+    );
+  }
+
+  void _showProfileSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _ProfileBottomSheet(onLogout: _handleLogout),
+      builder: (_) => _ProfileSheet(onLogout: _handleLogout),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final user = auth.currentUser;
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.modernGradient,
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: false,
-            title: const Text(
-              'GASMATE',
+      backgroundColor: _navyBg,
+      appBar: _buildAppBar(auth, user),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+          children: [
+            // ── Menu section label ──
+            const Text(
+              'MENU',
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.5,
-                fontFamily: 'Sans-serif',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: _navyMuted,
+                letterSpacing: 1.1,
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.logout_rounded),
-                tooltip: 'Logout',
-                onPressed: _handleLogout,
-              ),
-              IconButton(
-                icon: const Icon(Icons.menu_rounded),
-                tooltip: 'Menu',
-                onPressed: () => _showProfileBottomSheet(context),
-              ),
-            ],
-          ),
-        ),
-      ),
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Menu list for attendants
-              _MenuList(onSale: _handleSale),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 8),
 
-  Widget _menuButton(String title, IconData icon, VoidCallback onPressed) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ElevatedButton.icon(
-        icon: Icon(icon),
-        label: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14.0),
-          child: Text(title),
-        ),
-        onPressed: onPressed,
-      ),
-    );
-  }
-}
-
-
-class _MenuList extends StatelessWidget {
-  final VoidCallback onSale;
-
-  const _MenuList({required this.onSale});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <_MenuItem>[
-      // SALE menu item
-      _MenuItem(
-        title: 'SALE',
-        subtitle: 'Start a New Sale',
-        icon: Icons.shopping_cart,
-        color: AppColors.primary,
-        onTap: onSale,
-      ),
-
-      // New menu items for attendants
-      // Commented out for now - may be needed later
-      // _MenuItem(
-      //   title: 'FILL ORDER REQUEST',
-      //   subtitle: 'Create cylinder refill requests',
-      //   icon: Icons.propane_tank,
-      //   color: const Color(0xFF6366F1),
-      //   onTap: () {
-      //     Navigator.of(context).push(
-      //       MaterialPageRoute(builder: (_) => const SelectCylindersScreen()),
-      //     );
-      //   },
-      // ),
-      _MenuItem(
-        title: 'CYLINDER COLLECTIONS',
-        subtitle: 'Prepare cylinders for collection',
-        icon: Icons.propane_tank_rounded,
-        color: const Color(0xFF8B5CF6),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CylinderCollectionsScreen()),
-          );
-        },
-      ),
-      _MenuItem(
-        title: 'REPORTS',
-        subtitle: 'Batch cutoff, last sale, audit, incident, generator',
-        icon: Icons.bar_chart,
-        color: const Color(0xFF0EA5E9),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ReportsMenuScreen()),
-          );
-        },
-      ),
-      _MenuItem(
-        title: 'CHECK FOR UPDATES',
-        subtitle: 'Update to the latest version',
-        icon: Icons.system_update_alt,
-        color: const Color(0xFFE91E63),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CheckUpdatesScreen()),
-          );
-        },
-      ),
-
-      // Commented out old menu items (can be re-enabled if needed)
-      // _MenuItem(
-      //   title: 'COUPON SALE',
-      //   subtitle: 'Redeem a prepaid fuel voucher',
-      //   icon: Icons.card_giftcard,
-      //   color: AppColors.secondary,
-      //   onTap: onCoupon,
-      // ),
-      // _MenuItem(
-      //   title: 'BALANCE ENQUIRY',
-      //   subtitle: 'Check card balances',
-      //   icon: Icons.account_balance_wallet,
-      //   color: AppColors.success,
-      //   onTap: onBalance,
-      // ),
-      // _MenuItem(
-      //   title: 'CARD PIN RESET',
-      //   subtitle: 'Set a new 4-digit card PIN',
-      //   icon: Icons.pin,
-      //   color: AppColors.error,
-      //   onTap: onPinReset,
-      // ),
-      // _MenuItem(
-      //   title: 'REPORTS',
-      //   subtitle: 'Batch cutoff, last sale, audit, reversals',
-      //   icon: Icons.bar_chart,
-      //   color: AppColors.info,
-      //   onTap: onReports,
-      // ),
-      // _MenuItem(
-      //   title: 'CHANGE',
-      //   subtitle: 'Float top-up and change requests',
-      //   icon: Icons.swap_horiz,
-      //   color: AppColors.warning,
-      //   onTap: onChange,
-      // ),
-    ];
-    return Column(
-      children: [
-        for (final it in items) ...[
-          _MenuTile(item: it),
-          const SizedBox(height: 9),
-        ],
-      ],
-    );
-  }
-}
-
-class _MenuItem {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  _MenuItem({required this.title, required this.subtitle, required this.icon, required this.color, required this.onTap});
-}
-
-class _MenuCard extends StatelessWidget {
-  final _MenuItem item;
-  const _MenuCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: item.onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            )
+            // ── Menu tiles ──
+            _buildMenuTile(
+              icon: Icons.shopping_cart_rounded,
+              title: 'Sale',
+              subtitle: 'Start a new fuel sale',
+              onTap: _handleSale,
+              isPrimary: true,
+            ),
+            const SizedBox(height: 8),
+            _buildMenuTile(
+              icon: Icons.propane_tank_rounded,
+              title: 'Cylinder Collections',
+              subtitle: 'Prepare cylinders for collection',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const CylinderCollectionsScreen())),
+            ),
+            const SizedBox(height: 8),
+            _buildMenuTile(
+              icon: Icons.bar_chart_rounded,
+              title: 'Reports',
+              subtitle: 'Batch cutoff, last sale, audit, incidents',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const ReportsMenuScreen())),
+            ),
+            const SizedBox(height: 8),
+            _buildMenuTile(
+              icon: Icons.system_update_alt_rounded,
+              title: 'Check for Updates',
+              subtitle: 'Update to the latest version',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const CheckUpdatesScreen())),
+            ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: item.color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(item.icon, color: item.color, size: 20),
-                ),
-                const SizedBox(height: 6),
-                Flexible(
-                  child: Builder(
-                    builder: (context) => MediaQuery(
-                      data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-                      child: Text(
-                        item.title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          height: 1.1,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
-}
 
-class _MenuTile extends StatelessWidget {
-  final _MenuItem item;
-  const _MenuTile({required this.item});
+  // ── AppBar ────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: item.onTap,
-          borderRadius: BorderRadius.circular(16),
+  PreferredSizeWidget _buildAppBar(AuthProvider auth, user) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _navy,
+          border: Border(
+              bottom: BorderSide(color: Color(0x22FFFFFF), width: 1)),
+        ),
+        child: SafeArea(
+          bottom: false,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                // Modern icon container with color
+                // App icon badge
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        item.color.withOpacity(0.9),
-                        item.color,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: item.color.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    item.icon,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.local_gas_station_rounded,
+                      color: Colors.white, size: 16),
                 ),
-                const SizedBox(width: 12),
-                // Title and subtitle
-                Expanded(
+                const SizedBox(width: 10),
+                const Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          letterSpacing: 0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.subtitle,
+                        'GASMAN',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          height: 1.2,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Service Station Management',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0x99FFFFFF),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
-                // Arrow icon
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: Colors.grey[400],
-                  size: 16,
+                IconButton(
+                  icon: const Icon(Icons.logout_rounded,
+                      color: Colors.white, size: 20),
+                  tooltip: 'Logout',
+                  splashRadius: 20,
+                  onPressed: _handleLogout,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.person_rounded,
+                      color: Colors.white, size: 20),
+                  tooltip: 'Profile',
+                  splashRadius: 20,
+                  onPressed: _showProfileSheet,
                 ),
               ],
             ),
@@ -493,19 +328,173 @@ class _MenuTile extends StatelessWidget {
       ),
     );
   }
+
+  // ── Station strip ─────────────────────────────────────────
+
+  Widget _buildStationStrip(AuthProvider auth) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: _navy.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(Icons.store_rounded, color: _navy, size: 17),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  auth.serviceStationName ?? '',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _navy,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (auth.serviceStationAddress != null &&
+                    auth.serviceStationAddress!.isNotEmpty)
+                  Text(
+                    auth.serviceStationAddress!,
+                    style: const TextStyle(
+                        fontSize: 11, color: _navyMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          // Device status badge
+          Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            decoration: BoxDecoration(
+              color: auth.isDeviceActive
+                  ? const Color(0xFFDFF7EC)
+                  : const Color(0xFFFFF4DC),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Text(
+              auth.isDeviceActive ? 'Active' : 'Inactive',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: auth.isDeviceActive
+                    ? const Color(0xFF1A7A40)
+                    : const Color(0xFF7A5500),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Menu tile ─────────────────────────────────────────────
+
+  Widget _buildMenuTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    return Material(
+      color: isPrimary ? _navy : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isPrimary
+                      ? Colors.white.withOpacity(0.12)
+                      : _navy.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon,
+                    color: isPrimary ? Colors.white : _navy, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isPrimary ? Colors.white : _navy,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isPrimary
+                            ? Colors.white.withOpacity(0.65)
+                            : _navyMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isPrimary
+                    ? Colors.white.withOpacity(0.5)
+                    : _navyMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _ProfileBottomSheet extends StatefulWidget {
-  final VoidCallback onLogout;
+// ─────────────────────────────────────────
+// Profile bottom sheet
+// ─────────────────────────────────────────
 
-  const _ProfileBottomSheet({required this.onLogout});
+class _ProfileSheet extends StatefulWidget {
+  final VoidCallback onLogout;
+  const _ProfileSheet({required this.onLogout});
 
   @override
-  State<_ProfileBottomSheet> createState() => _ProfileBottomSheetState();
+  State<_ProfileSheet> createState() => _ProfileSheetState();
 }
 
-class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
+class _ProfileSheetState extends State<_ProfileSheet> {
   String _version = '';
+
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyMuted = Color(0xFF6B80A0);
 
   @override
   void initState() {
@@ -514,16 +503,18 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
   }
 
   Future<void> _loadVersion() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    setState(() {
-      _version = '${packageInfo.version}+${packageInfo.buildNumber}';
-    });
+    final info = await PackageInfo.fromPlatform();
+    setState(() =>
+    _version = '${info.version}+${info.buildNumber}');
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
+    final isLocal = ApiConstants.baseUrl.contains('localhost') ||
+        ApiConstants.baseUrl.contains('10.') ||
+        ApiConstants.baseUrl.contains('192.168');
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -533,393 +524,186 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius:
+            BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
-              // Drag Handle
+              // Handle
               Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 40,
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
+                  color: const Color(0xFFDDE4EE),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
               // Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                padding:
+                const EdgeInsets.fromLTRB(16, 6, 8, 12),
                 child: Row(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        gradient: AppColors.modernGradient,
-                        borderRadius: BorderRadius.circular(12),
+                        color: _navy,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
-                        Icons.local_gas_station_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                          Icons.local_gas_station_rounded,
+                          color: Colors.white,
+                          size: 18),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'GASMATE',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A1A1A),
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Service Station Management',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF6B7280),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
+                          Text('GASMAN',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: _navy,
+                                  letterSpacing: 1.0)),
+                          Text('Service Station Management',
+                              style: TextStyle(
+                                  fontSize: 11, color: _navyMuted)),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(Icons.close_rounded,
+                          color: _navyMuted, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
-                      color: const Color(0xFF6B7280),
+                      splashRadius: 18,
                     ),
                   ],
                 ),
               ),
-
-              const Divider(height: 1),
-
+              const Divider(height: 1, color: Color(0xFFF0F4FA)),
               // Content
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   children: [
-                    // Service Station Section
-                    _buildSection(
-                      title: 'SERVICE STATION',
-                      child: _InfoCard(
-                        icon: Icons.store_rounded,
-                        title: auth.serviceStationName ?? 'Not Available',
-                        subtitle: auth.serviceStationAddress ?? '',
-                        color: AppColors.primary,
-                        trailing: auth.serviceStationPhone != null &&
-                                auth.serviceStationPhone!.isNotEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.phone_rounded,
-                                      size: 16,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      auth.serviceStationPhone!,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF6B7280),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : null,
+                    // Service station
+                    _sheetSection('SERVICE STATION'),
+                    const SizedBox(height: 8),
+                    _infoTile(
+                      icon: Icons.store_rounded,
+                      title: auth.serviceStationName ?? 'Not Available',
+                      subtitle: auth.serviceStationAddress ?? '',
+                      extra: auth.serviceStationPhone,
+                      extraIcon: Icons.phone_rounded,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Attendant
+                    if (user != null) ...[
+                      _sheetSection('ATTENDANT'),
+                      const SizedBox(height: 8),
+                      _infoTile(
+                        icon: Icons.person_rounded,
+                        title: user.fullName,
+                        subtitle: user.designation ?? 'Attendant',
+                        extra: '@${user.username}',
+                        extraIcon: Icons.badge_rounded,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Device
+                    if (auth.serialNumber != null &&
+                        auth.serialNumber!.isNotEmpty) ...[
+                      _sheetSection('DEVICE'),
+                      const SizedBox(height: 8),
+                      _infoTile(
+                        icon: Icons.devices_rounded,
+                        title: 'Serial Number',
+                        subtitle: auth.serialNumber ?? '',
+                        badgeLabel:
+                        auth.isDeviceActive ? 'Active' : 'Inactive',
+                        badgeOk: auth.isDeviceActive,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // API
+                    _sheetSection('API ENDPOINT'),
+                    const SizedBox(height: 8),
+                    _infoTile(
+                      icon: Icons.dns_rounded,
+                      title: 'Base URL',
+                      subtitle: ApiConstants.baseUrl
+                          .split('/api/')
+                          .first,
+                      badgeLabel: isLocal ? 'Local' : 'Production',
+                      badgeOk: !isLocal,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // About
+                    _sheetSection('ABOUT'),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFD),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: const Color(0xFFE8EDF5)),
+                      ),
+                      child: Column(
+                        children: [
+                          _aboutRow(Icons.info_outline_rounded,
+                              'Version $_version'),
+                          const Divider(
+                              height: 20, color: Color(0xFFEEF2F8)),
+                          _aboutRow(
+                              Icons.developer_mode_rounded,
+                              'Poscloud Private Ltd',
+                              subtitle:
+                              'Developed and maintained by'),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 20),
 
-                    const SizedBox(height: 24),
-
-                    // Attendant Section
-                    if (user != null)
-                      _buildSection(
-                        title: 'ATTENDANT DETAILS',
-                        child: _InfoCard(
-                          icon: Icons.person_rounded,
-                          title: user.fullName,
-                          subtitle: user.designation ?? 'Attendant',
-                          color: AppColors.indigo,
-                          trailing: Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.badge_rounded,
-                                  size: 16,
-                                  color: Color(0xFF6B7280),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '@${user.username}',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF6B7280),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    // Device Details Section
-                    if (auth.serialNumber != null && auth.serialNumber!.isNotEmpty)
-                      _buildSection(
-                        title: 'DEVICE DETAILS',
-                        child: _InfoCard(
-                          icon: Icons.devices_rounded,
-                          title: 'Serial Number',
-                          subtitle: auth.serialNumber ?? 'Not Available',
-                          color: const Color(0xFF10B981),
-                          trailing: Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: auth.isDeviceActive
-                                        ? const Color(0xFF10B981).withOpacity(0.15)
-                                        : const Color(0xFFF59E0B).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        auth.isDeviceActive
-                                            ? Icons.check_circle_rounded
-                                            : Icons.info_rounded,
-                                        size: 14,
-                                        color: auth.isDeviceActive
-                                            ? const Color(0xFF10B981)
-                                            : const Color(0xFFF59E0B),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        auth.isDeviceActive ? 'Active' : 'Inactive',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: auth.isDeviceActive
-                                              ? const Color(0xFF10B981)
-                                              : const Color(0xFFF59E0B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    if (auth.serialNumber != null && auth.serialNumber!.isNotEmpty)
-                      const SizedBox(height: 24),
-
-                    // API Endpoint Section
-                    _buildSection(
-                      title: 'API ENDPOINT',
-                      child: _InfoCard(
-                        icon: Icons.dns_rounded,
-                        title: 'Base URL',
-                        subtitle: ApiConstants.baseUrl.split('/api/').first,
-                        color: const Color(0xFF0EA5E9),
-                        trailing: Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ApiConstants.baseUrl.contains('localhost') ||
-                                         ApiConstants.baseUrl.contains('10.') ||
-                                         ApiConstants.baseUrl.contains('192.168')
-                                      ? const Color(0xFFF59E0B).withOpacity(0.15)
-                                      : const Color(0xFF10B981).withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      ApiConstants.baseUrl.contains('localhost') ||
-                                      ApiConstants.baseUrl.contains('10.') ||
-                                      ApiConstants.baseUrl.contains('192.168')
-                                          ? Icons.computer_rounded
-                                          : Icons.cloud_done_rounded,
-                                      size: 14,
-                                      color: ApiConstants.baseUrl.contains('localhost') ||
-                                             ApiConstants.baseUrl.contains('10.') ||
-                                             ApiConstants.baseUrl.contains('192.168')
-                                          ? const Color(0xFFF59E0B)
-                                          : const Color(0xFF10B981),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      ApiConstants.baseUrl.contains('localhost') ||
-                                      ApiConstants.baseUrl.contains('10.') ||
-                                      ApiConstants.baseUrl.contains('192.168')
-                                          ? 'Local'
-                                          : 'Production',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: ApiConstants.baseUrl.contains('localhost') ||
-                                               ApiConstants.baseUrl.contains('10.') ||
-                                               ApiConstants.baseUrl.contains('192.168')
-                                            ? const Color(0xFFF59E0B)
-                                            : const Color(0xFF10B981),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // About Section
-                    _buildSection(
-                      title: 'ABOUT',
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFFE5E7EB),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.info_outline_rounded,
-                                  size: 18,
-                                  color: Color(0xFF6B7280),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Version $_version',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF1A1A1A),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            const Divider(height: 1),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.developer_mode_rounded,
-                                  size: 18,
-                                  color: Color(0xFF6B7280),
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Developed and Maintained by',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Color(0xFF6B7280),
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                      SizedBox(height: 2),
-                                      Text(
-                                        'Poscloud Private Ltd',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF1A1A1A),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Logout Button
+                    // Logout
                     SizedBox(
-                      height: 50,
-                      child: ElevatedButton.icon(
+                      width: double.infinity,
+                      height: 46,
+                      child: TextButton.icon(
                         onPressed: () {
                           Navigator.of(context).pop();
                           widget.onLogout();
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF3B30),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
+                        style: TextButton.styleFrom(
+                          foregroundColor:
+                          const Color(0xFFCC3333),
+                          backgroundColor:
+                          const Color(0xFFFFF5F5),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius:
+                            BorderRadius.circular(10),
+                            side: const BorderSide(
+                                color: Color(0xFFEEC0C0)),
                           ),
                         ),
-                        icon: const Icon(Icons.logout_rounded, size: 20),
-                        label: const Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
+                        icon: const Icon(
+                            Icons.logout_rounded,
+                            size: 17),
+                        label: const Text('Logout',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700)),
                       ),
                     ),
-
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -930,52 +714,33 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
     );
   }
 
-  Widget _buildSection({required String title, required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF6B7280),
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 12),
-        child,
-      ],
+  Widget _sheetSection(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        color: _navyMuted,
+        letterSpacing: 1.2,
+      ),
     );
   }
-}
 
-class _InfoCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final Widget? trailing;
-
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _infoTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    String? extra,
+    IconData? extraIcon,
+    String? badgeLabel,
+    bool? badgeOk,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: const Color(0xFFF8FAFD),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -983,52 +748,96 @@ class _InfoCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: _navy.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 22,
-                ),
+                child: Icon(icon, color: _navy, size: 17),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
+                    Text(title,
                         style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF6B7280),
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ],
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _navy),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    if (subtitle.isNotEmpty)
+                      Text(subtitle,
+                          style: const TextStyle(
+                              fontSize: 11, color: _navyMuted),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
+              if (badgeLabel != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: (badgeOk ?? false)
+                        ? const Color(0xFFDFF7EC)
+                        : const Color(0xFFFFF4DC),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    badgeLabel,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: (badgeOk ?? false)
+                          ? const Color(0xFF1A7A40)
+                          : const Color(0xFF7A5500),
+                    ),
+                  ),
+                ),
             ],
           ),
-          if (trailing != null) trailing!,
+          if (extra != null && extra.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(extraIcon ?? Icons.info_outline_rounded,
+                    size: 13, color: _navyMuted),
+                const SizedBox(width: 6),
+                Text(extra,
+                    style: const TextStyle(
+                        fontSize: 11, color: _navyMuted)),
+              ],
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _aboutRow(IconData icon, String text, {String? subtitle}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: _navyMuted),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (subtitle != null)
+              Text(subtitle,
+                  style: const TextStyle(
+                      fontSize: 10, color: _navyMuted)),
+            Text(text,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _navy)),
+          ],
+        ),
+      ],
     );
   }
 }
