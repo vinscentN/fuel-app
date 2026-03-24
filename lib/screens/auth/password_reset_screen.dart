@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
+import '../../utils/colors.dart';
+import '../../utils/constants.dart';
 
 class PasswordResetScreen extends StatefulWidget {
   const PasswordResetScreen({super.key});
@@ -11,44 +16,44 @@ class PasswordResetScreen extends StatefulWidget {
 
 class _PasswordResetScreenState extends State<PasswordResetScreen>
     with SingleTickerProviderStateMixin {
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyBg = Color(0xFFF0F4FA);
+  static const _navyMuted = Color(0xFF6B80A0);
+
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
-  final _currentPasswordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  bool _obscureCurrentPassword = true;
-  bool _obscureNewPassword = true;
-  bool _obscureConfirmPassword = true;
+  final _currentCodeController = TextEditingController();
+  final _newCodeController = TextEditingController();
+  final _confirmCodeController = TextEditingController();
+  final _currentCodeFocus = FocusNode();
+  final _newCodeFocus = FocusNode();
+  final _confirmCodeFocus = FocusNode();
+
   bool _isLoading = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late final AnimationController _animationController;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
     );
-
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.15),
+      begin: const Offset(0, 0.05),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+        curve: Curves.easeOutCubic,
       ),
     );
-
     _animationController.forward();
   }
 
@@ -56,9 +61,12 @@ class _PasswordResetScreenState extends State<PasswordResetScreen>
   void dispose() {
     _animationController.dispose();
     _usernameController.dispose();
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _currentCodeController.dispose();
+    _newCodeController.dispose();
+    _confirmCodeController.dispose();
+    _currentCodeFocus.dispose();
+    _newCodeFocus.dispose();
+    _confirmCodeFocus.dispose();
     super.dispose();
   }
 
@@ -72,26 +80,26 @@ class _PasswordResetScreenState extends State<PasswordResetScreen>
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.resetPassword(
         username: _usernameController.text.trim(),
-        oldPassword: _currentPasswordController.text,
-        newPassword: _newPasswordController.text,
-        confirmPassword: _confirmPasswordController.text,
+        oldPassword: _currentCodeController.text.trim(),
+        newPassword: _newCodeController.text.trim(),
+        confirmPassword: _confirmCodeController.text.trim(),
       );
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          _showSuccessDialog();
-        } else {
-          // Error message already set in provider
-          final errorMessage = authProvider.errorMessage ?? 'Password reset failed. Please try again.';
-          _showErrorSnackBar(errorMessage);
-        }
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      if (success) {
+        _showSuccessDialog();
+        return;
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showErrorSnackBar('Password reset failed. Please try again.');
-      }
+
+      final errorMessage =
+          authProvider.errorMessage ?? 'Password reset failed. Please try again.';
+      _showErrorSnackBar(errorMessage);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Password reset failed. Please try again.');
     }
   }
 
@@ -100,42 +108,34 @@ class _PasswordResetScreenState extends State<PasswordResetScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: const Text(
           'Success',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A1A),
-            letterSpacing: -0.3,
+            color: _navy,
           ),
         ),
         content: const Text(
           'Operator code changed successfully. You can now login with your new code.',
           style: TextStyle(
-            fontSize: 15,
-            color: Color(0xFF6B7280),
-            fontWeight: FontWeight.w500,
-            letterSpacing: -0.2,
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.35,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).pop(); // Return to login
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
             child: const Text(
               'OK',
               style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0A4DA3),
-                letterSpacing: -0.3,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -147,505 +147,368 @@ class _PasswordResetScreenState extends State<PasswordResetScreen>
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ),
-          ],
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.w500),
         ),
-        backgroundColor: const Color(0xFFFF3B30),
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF0A4DA3);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: _navyBg,
+      appBar: _buildAppBar(context),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Back button header
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_rounded,
-                      color: Color(0xFF0A4DA3),
-                      size: 20,
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'AUTHORIZATION',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: _navyMuted,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFE8EDF5),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Reset 4-digit operator code',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: _navy,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Use the same compact PIN format as operator verification.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _navyMuted,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                _buildUsernameField(),
+                                const SizedBox(height: 12),
+                                _buildPinField(
+                                  label: 'CURRENT OPERATOR CODE',
+                                  controller: _currentCodeController,
+                                  focusNode: _currentCodeFocus,
+                                  autoFocus: true,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter your current operator code';
+                                    }
+                                    if (value.trim().length != AppConstants.pinLength) {
+                                      return 'Operator code must be exactly 4 digits';
+                                    }
+                                    return null;
+                                  },
+                                  onCompleted: (_) =>
+                                      FocusScope.of(context).requestFocus(_newCodeFocus),
+                                ),
+                                const SizedBox(height: 12),
+                                _buildPinField(
+                                  label: 'NEW OPERATOR CODE',
+                                  controller: _newCodeController,
+                                  focusNode: _newCodeFocus,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter new operator code';
+                                    }
+                                    if (value.trim().length != AppConstants.pinLength) {
+                                      return 'Operator code must be exactly 4 digits';
+                                    }
+                                    if (value.trim() == _currentCodeController.text.trim()) {
+                                      return 'New operator code must be different';
+                                    }
+                                    return null;
+                                  },
+                                  onCompleted: (_) => FocusScope.of(context)
+                                      .requestFocus(_confirmCodeFocus),
+                                ),
+                                const SizedBox(height: 12),
+                                _buildPinField(
+                                  label: 'CONFIRM NEW OPERATOR CODE',
+                                  controller: _confirmCodeController,
+                                  focusNode: _confirmCodeFocus,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please confirm your operator code';
+                                    }
+                                    if (value.trim().length != AppConstants.pinLength) {
+                                      return 'Operator code must be exactly 4 digits';
+                                    }
+                                    if (value.trim() != _newCodeController.text.trim()) {
+                                      return 'Operator codes do not match';
+                                    }
+                                    return null;
+                                  },
+                                  onCompleted: (_) => _handlePasswordReset(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _handlePasswordReset,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Reset Operator Code',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
-                    onPressed: () => Navigator.of(context).pop(),
                   ),
-                  const Text(
-                    'Back',
-                    style: TextStyle(
-                      color: Color(0xFF0A4DA3),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
 
-            // Main content
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 8),
-                          _buildTitle(),
-                          const SizedBox(height: 24),
-                          _buildResetForm(primaryBlue),
-                          const SizedBox(height: 8),
-                        ],
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _navy,
+          border: Border(
+            bottom: BorderSide(color: Color(0x22FFFFFF), width: 1),
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  splashRadius: 20,
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.lock_reset_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reset Operator Code',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                    ),
+                      Text(
+                        'Secure verification',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0x99FFFFFF),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTitle() {
-    return const Column(
-      children: [
-        Text(
-          'Reset Operator Code',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A1A),
-            letterSpacing: -0.5,
-            height: 1.2,
-          ),
-        ),
-        SizedBox(height: 6),
-        Text(
-          'Enter your details to reset your operator code',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF6B7280),
-            letterSpacing: -0.2,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResetForm(Color primaryBlue) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 400),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 48,
-            offset: const Offset(0, 12),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildTextField(
-                label: 'USERNAME',
-                controller: _usernameController,
-                hintText: 'Enter your username',
-                icon: Icons.person_outline_rounded,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your username';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildPasswordField(
-                label: 'CURRENT OPERATOR CODE',
-                controller: _currentPasswordController,
-                hintText: 'Enter current operator code',
-                obscureText: _obscureCurrentPassword,
-                onToggleVisibility: () =>
-                    setState(() => _obscureCurrentPassword = !_obscureCurrentPassword),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your current operator code';
-                  }
-                  if (value.length < 4) {
-                    return 'Operator code must be at least 4 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildPasswordField(
-                label: 'NEW OPERATOR CODE',
-                controller: _newPasswordController,
-                hintText: 'Enter new operator code',
-                obscureText: _obscureNewPassword,
-                onToggleVisibility: () =>
-                    setState(() => _obscureNewPassword = !_obscureNewPassword),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter new operator code';
-                  }
-                  if (value.length < 4) {
-                    return 'Operator code must be at least 4 characters';
-                  }
-                  if (value == _currentPasswordController.text) {
-                    return 'New operator code must be different';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildPasswordField(
-                label: 'CONFIRM NEW OPERATOR CODE',
-                controller: _confirmPasswordController,
-                hintText: 'Confirm new operator code',
-                obscureText: _obscureConfirmPassword,
-                onToggleVisibility: () =>
-                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please confirm your operator code';
-                  }
-                  if (value != _newPasswordController.text) {
-                    return 'Operator codes do not match';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              _buildResetButton(primaryBlue),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required String label,
-    required TextEditingController controller,
-    required String hintText,
-    required IconData icon,
-    required String? Function(String?) validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF6B7280),
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        TextFormField(
-          controller: controller,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF1A1A1A),
-            letterSpacing: -0.3,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: const TextStyle(
-              color: Color(0xFF9CA3AF),
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              letterSpacing: -0.2,
-            ),
-            prefixIcon: Container(
-              margin: const EdgeInsets.only(right: 12),
-              child: Icon(
-                icon,
-                color: const Color(0xFF9CA3AF),
-                size: 22,
-              ),
-            ),
-            filled: true,
-            fillColor: const Color(0xFFF9FAFB),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFE5E7EB),
-                width: 1.5,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFE5E7EB),
-                width: 1.5,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFF0A4DA3),
-                width: 2,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFFF3B30),
-                width: 1.5,
-              ),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFFF3B30),
-                width: 2,
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            errorStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.4,
-            ),
-          ),
-          validator: validator,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordField({
-    required String label,
-    required TextEditingController controller,
-    required String hintText,
-    required bool obscureText,
-    required VoidCallback onToggleVisibility,
-    required String? Function(String?) validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF6B7280),
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF1A1A1A),
-            letterSpacing: -0.3,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: const TextStyle(
-              color: Color(0xFF9CA3AF),
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              letterSpacing: -0.2,
-            ),
-            prefixIcon: Container(
-              margin: const EdgeInsets.only(right: 12),
-              child: const Icon(
-                Icons.lock_outline_rounded,
-                color: Color(0xFF9CA3AF),
-                size: 22,
-              ),
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                obscureText
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                color: const Color(0xFF9CA3AF),
-                size: 22,
-              ),
-              onPressed: onToggleVisibility,
-              splashRadius: 24,
-            ),
-            filled: true,
-            fillColor: const Color(0xFFF9FAFB),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFE5E7EB),
-                width: 1.5,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFE5E7EB),
-                width: 1.5,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFF0A4DA3),
-                width: 2,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFFF3B30),
-                width: 1.5,
-              ),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFFF3B30),
-                width: 2,
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            errorStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.4,
-            ),
-          ),
-          validator: validator,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResetButton(Color primaryBlue) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        gradient: _isLoading
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  primaryBlue,
-                  primaryBlue.withOpacity(0.85),
-                ],
-              ),
-        color: _isLoading ? const Color(0xFFE5E7EB) : null,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: _isLoading
-            ? []
-            : [
-                BoxShadow(
-                  color: primaryBlue.withOpacity(0.3),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: primaryBlue.withOpacity(0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
                 ),
               ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _isLoading ? null : _handlePasswordReset,
-          borderRadius: BorderRadius.circular(14),
-          splashColor: Colors.white.withOpacity(0.2),
-          highlightColor: Colors.white.withOpacity(0.1),
-          child: Center(
-            child: _isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation(
-                        Color(0xFF9CA3AF),
-                      ),
-                    ),
-                  )
-                : const Text(
-                    'Reset Operator Code',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildUsernameField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'USERNAME',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: _navyMuted,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: _usernameController,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            hintText: 'Enter your username',
+            isDense: true,
+            prefixIcon: const Icon(
+              Icons.person_outline_rounded,
+              size: 18,
+              color: _navyMuted,
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFD),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE8EDF5)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE8EDF5)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _navy, width: 1.5),
+            ),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter your username';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPinField({
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String? Function(String?) validator,
+    required ValueChanged<String> onCompleted,
+    bool autoFocus = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: _navyMuted,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        PinCodeTextField(
+          appContext: context,
+          controller: controller,
+          focusNode: focusNode,
+          autoFocus: autoFocus,
+          autoDisposeControllers: false,
+          length: AppConstants.pinLength,
+          obscureText: true,
+          obscuringCharacter: '•',
+          keyboardType: TextInputType.number,
+          animationType: AnimationType.fade,
+          enableActiveFill: true,
+          autoDismissKeyboard: false,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          validator: validator,
+          textStyle: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _navy,
+          ),
+          pinTheme: PinTheme(
+            shape: PinCodeFieldShape.box,
+            borderRadius: BorderRadius.circular(10),
+            fieldHeight: 48,
+            fieldWidth: 48,
+            activeFillColor: _navy.withOpacity(0.08),
+            inactiveFillColor: const Color(0xFFF8FAFD),
+            selectedFillColor: _navy.withOpacity(0.12),
+            activeColor: _navy,
+            inactiveColor: const Color(0xFFE8EDF5),
+            selectedColor: _navy,
+          ),
+          errorTextSpace: 20,
+          beforeTextPaste: (_) => false,
+          onChanged: (_) {},
+          onCompleted: onCompleted,
+        ),
+      ],
     );
   }
 }

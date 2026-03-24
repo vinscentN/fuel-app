@@ -6,14 +6,11 @@ import '../../providers/payment_provider.dart';
 import '../../utils/colors.dart';
 import '../../models/transaction.dart';
 import '../../models/customer.dart';
-import '../../widgets/common/app_bar_widget.dart';
-import '../../widgets/common/custom_button.dart';
 import '../../services/external_payment_service.dart';
 import 'card_payment_screen.dart';
 import 'cash_payment_screen.dart';
 import 'transaction_processing_screen.dart';
 import '../common/customer_details_screen.dart';
-// import 'mobile_payment_screen.dart'; // Temporarily disabled
 
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({super.key});
@@ -27,24 +24,22 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  // Use app navy color
+  // Navy palette — consistent across all screens
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyBg = Color(0xFFF0F4FA);
+  static const _navyMuted = Color(0xFF6B80A0);
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
+    _fadeAnimation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeOut,
-    ));
-
+    );
     _animationController.forward();
   }
 
@@ -55,7 +50,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   }
 
   void _selectPaymentMethod(PaymentMethod method) async {
-    final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+    final paymentProvider =
+    Provider.of<PaymentProvider>(context, listen: false);
     paymentProvider.selectPaymentMethod(method);
 
     switch (method) {
@@ -65,17 +61,15 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
         );
         break;
       case PaymentMethod.cash:
-        // Skip cash payment screen, go directly to customer details
         await _processCashPayment();
         break;
       case PaymentMethod.mobile:
-        // Mobile money flow disabled for now
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mobile Money temporarily unavailable')),
+          const SnackBar(
+              content: Text('Mobile Money temporarily unavailable')),
         );
         return;
       default:
-        // Coupon not selectable from generic payment screen
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unsupported payment method')),
         );
@@ -86,43 +80,33 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   Future<void> _processCashPayment() async {
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
 
-    // Guard required fields
     if (fuelProvider.selectedProduct == null ||
         fuelProvider.selectedCurrency == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Missing sale details. Please restart the sale.')),
+        const SnackBar(
+            content:
+            Text('Missing sale details. Please restart the sale.')),
       );
       return;
     }
 
-    // Navigate to customer details screen
-    final customerResult = await Navigator.of(context).push<Map<String, dynamic>>(
+    final customerResult =
+    await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => const CustomerDetailsScreen(
           title: 'Customer Details',
-          subtitle: 'Search for existing customer or add new customer details',
+          subtitle:
+          'Search for existing customer or add new customer details',
         ),
       ),
     );
 
     if (!mounted) return;
+    if (customerResult == null) return;
 
-    // Check if user navigated back without confirming (pressed back button)
-    // In that case, customerResult will be null and we should NOT proceed
-    // This prevents accidental transaction processing
-    if (customerResult == null) {
-      // User clicked back or cancelled, do not proceed to transaction processing
-      return;
-    }
+    final customerId = customerResult['customerId'] as int?;
+    final customerData = customerResult['customerData'] as CustomerData?;
 
-    // Extract customer data from result
-    int? customerId;
-    CustomerData? customerData;
-
-    customerId = customerResult['customerId'] as int?;
-    customerData = customerResult['customerData'] as CustomerData?;
-
-    // Navigate to transaction processing screen
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TransactionProcessingScreen(
@@ -135,11 +119,9 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
   Future<void> _launchExternalPayment(String method) async {
     final fuelProvider = Provider.of<FuelProvider>(context, listen: false);
-    final amount = fuelProvider.selectedAmount;
-
     await ExternalPaymentService.launchExternalPaymentApp(
-      amount: amount,
-      currency: 'USD', // Default currency as requested
+      amount: fuelProvider.selectedAmount,
+      currency: 'USD',
       method: method,
       context: context,
     );
@@ -148,11 +130,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: CustomAppBar(
-        title: 'Payment Method',
-        backgroundColor: AppColors.primary,
-      ),
+      backgroundColor: _navyBg,
+      appBar: _buildAppBar(),
       body: Consumer2<FuelProvider, PaymentProvider>(
         builder: (context, fuelProvider, paymentProvider, child) {
           final product = fuelProvider.selectedProduct;
@@ -164,22 +143,41 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
 
           return FadeTransition(
             opacity: _fadeAnimation,
-            child: Column(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
               children: [
-                // Compact summary at top
-                _buildCompactSummary(fuelProvider, currency),
-                // Scrollable payment methods
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildPaymentMethodsSection(),
-                      ],
-                    ),
-                  ),
+                _buildSummaryStrip(fuelProvider, currency),
+                const SizedBox(height: 14),
+                _sectionLabel('Select Payment Method'),
+                const SizedBox(height: 8),
+                _buildPaymentMethodCard(
+                  icon: Icons.money_rounded,
+                  title: 'Cash Payment',
+                  subtitle: 'Pay with cash at the counter',
+                  method: PaymentMethod.cash,
                 ),
+                // Uncomment to re-enable additional methods:
+                // const SizedBox(height: 8),
+                // _buildPaymentMethodCard(
+                //   icon: Icons.credit_card_rounded,
+                //   title: 'Card Payment',
+                //   subtitle: 'Pay with debit or credit card',
+                //   method: PaymentMethod.card,
+                // ),
+                // const SizedBox(height: 8),
+                // _buildExternalPaymentCard(
+                //   icon: Icons.credit_card_outlined,
+                //   title: 'Zimswitch',
+                //   subtitle: 'Pay via external Zimswitch app',
+                //   method: 'Swipe',
+                // ),
+                // const SizedBox(height: 8),
+                // _buildExternalPaymentCard(
+                //   icon: Icons.phone_android_rounded,
+                //   title: 'Mobile Money',
+                //   subtitle: 'Pay with EcoCash or mobile money',
+                //   method: 'EcoCash',
+                // ),
               ],
             ),
           );
@@ -188,77 +186,313 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
     );
   }
 
-  Widget _buildCompactSummary(FuelProvider fuelProvider, currency) {
+  // ── AppBar ────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _navy,
+          border: Border(
+            bottom: BorderSide(color: Color(0x22FFFFFF), width: 1),
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      size: 18, color: Colors.white),
+                  splashRadius: 20,
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.payment_rounded,
+                      color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Payment Method',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      Text(
+                        'Choose how to pay',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0x99FFFFFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Summary strip ─────────────────────────────────────────
+
+  Widget _buildSummaryStrip(FuelProvider fuelProvider, currency) {
     final unit = _unitShort(fuelProvider.selectedProduct?.unitOfMeasure);
     return Container(
-      margin: const EdgeInsets.all(16.0),
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: _navy,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: _navy.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Total Amount',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w500,
+          // Amount
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TOTAL AMOUNT',
+                  style: TextStyle(
+                    fontSize: 9,
+                    letterSpacing: 1.2,
+                    color: Color(0xFF8899BB),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Text(
-                '${currency.symbol}${fuelProvider.selectedAmount.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 22,
+                const SizedBox(height: 3),
+                Text(
+                  '${currency.symbol}${fuelProvider.selectedAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          // Divider
+          Container(
+            width: 1,
+            height: 36,
+            color: Colors.white.withOpacity(0.12),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+          // Quantity
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'Quantity',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w500,
+              const Text(
+                'QUANTITY',
+                style: TextStyle(
+                  fontSize: 9,
+                  letterSpacing: 1.2,
+                  color: Color(0xFF8899BB),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+              const SizedBox(height: 3),
               Text(
                 '${fuelProvider.selectedQuantity.toStringAsFixed(2)} $unit',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+          const SizedBox(width: 12),
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(
-              Icons.local_gas_station,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: const Icon(Icons.local_gas_station_rounded,
+                color: Colors.white, size: 18),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Section label ─────────────────────────────────────────
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        color: _navyMuted,
+        letterSpacing: 1.1,
+      ),
+    );
+  }
+
+  // ── Payment method card ───────────────────────────────────
+
+  Widget _buildPaymentMethodCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required PaymentMethod method,
+  }) {
+    return Material(
+      color: _navy,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _selectPaymentMethod(method),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0x99FFFFFF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded,
+                    color: Colors.white, size: 16),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── External payment card ─────────────────────────────────
+
+  Widget _buildExternalPaymentCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String method,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _launchExternalPayment(method),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _navy.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: _navy, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _navyMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: _navy.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(Icons.open_in_new_rounded,
+                    color: _navy, size: 14),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -280,243 +514,5 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen>
       default:
         return code;
     }
-  }
-
-  Widget _buildPaymentMethodsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Select Payment Method',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 20),
-        // Card Payment - Commented out (Cash only for now)
-        // _buildPaymentMethodCard(
-        //   icon: Icons.credit_card,
-        //   title: 'Card Payment',
-        //   subtitle: 'Pay with debit or credit card',
-        //   color: AppColors.primary,
-        //   method: PaymentMethod.card,
-        //   delay: 0,
-        // ),
-        // const SizedBox(height: 16),
-        _buildPaymentMethodCard(
-          icon: Icons.money,
-          title: 'Cash Payment',
-          subtitle: 'Pay with cash',
-          color: AppColors.primaryLight,
-          method: PaymentMethod.cash,
-          delay: 0,
-        ),
-        // Zimswitch Card Payment - Commented out (Cash only for now)
-        // const SizedBox(height: 16),
-        // _buildExternalPaymentMethodCard(
-        //   icon: Icons.credit_card_outlined,
-        //   title: 'Zimswitch Card Payment',
-        //   subtitle: 'Pay with Zimswitch card via external app',
-        //   color: const Color(0xFF2196F3),
-        //   method: 'Swipe',
-        //   delay: 200,
-        // ),
-        // Mobile Money Payment - Commented out (Cash only for now)
-        // const SizedBox(height: 16),
-        // _buildExternalPaymentMethodCard(
-        //   icon: Icons.phone_android,
-        //   title: 'Mobile Money Payment',
-        //   subtitle: 'Pay with EcoCash or mobile money',
-        //   color: const Color(0xFF4CAF50),
-        //   method: 'EcoCash',
-        //   delay: 300,
-        // ),
-        const SizedBox(height: 20), // Extra space for visual separation
-      ],
-    );
-  }
-
-  Widget _buildPaymentMethodCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required PaymentMethod method,
-    required int delay,
-  }) {
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 600 + delay),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(50 * (1 - value), 0),
-          child: Opacity(
-            opacity: value,
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: InkWell(
-                onTap: () => _selectPaymentMethod(method),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(18), // Slightly reduced padding
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        color.withOpacity(0.1),
-                        Colors.white,
-                      ],
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 55, // Slightly smaller
-                        height: 55,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(icon, color: color, size: 26),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              subtitle,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: AppColors.textSecondary,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildExternalPaymentMethodCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required String method,
-    required int delay,
-  }) {
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 600 + delay),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(50 * (1 - value), 0),
-          child: Opacity(
-            opacity: value,
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: InkWell(
-                onTap: () => _launchExternalPayment(method),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        color.withOpacity(0.1),
-                        Colors.white,
-                      ],
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 55,
-                        height: 55,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(icon, color: color, size: 26),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              subtitle,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.open_in_new,
-                        color: AppColors.textSecondary,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildBackButton() {
-    return CustomButton(
-      onPressed: () => Navigator.of(context).pop(),
-      isOutlined: true,
-      backgroundColor: AppColors.textSecondary,
-      child: const Text(
-        'Back to Amount',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
   }
 }

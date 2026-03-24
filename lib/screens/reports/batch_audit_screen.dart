@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../utils/colors.dart';
-import '../../services/report_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/pos_provider.dart';
+import '../../services/report_service.dart';
+import '../../utils/colors.dart';
+import '../../utils/error_utils.dart';
 import '../common/operator_code_screen.dart';
 
 class BatchAuditScreen extends StatefulWidget {
@@ -17,18 +19,20 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
   final _service = ReportService();
   Map<String, dynamic>? _report;
   bool _loading = false;
+  bool _printing = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAndPrint());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBatchAudit());
   }
 
-  Future<void> _loadAndPrint() async {
+  Future<void> _loadBatchAudit() async {
     final auth = context.read<AuthProvider>();
     final serial = auth.serialNumber;
     final attendantId = auth.currentUser?.id ?? 0;
+
     if (serial == null || serial.isEmpty) {
       setState(() => _error = 'Device not activated. Serial number missing.');
       return;
@@ -37,7 +41,7 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
       setState(() => _error = 'Logged-in attendant not found. Please login again.');
       return;
     }
-    // Ask for operator code first
+
     final opCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => const OperatorCodeScreen(
@@ -46,30 +50,57 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
         ),
       ),
     );
-    if (opCode == null || opCode.isEmpty) return;
-    setState(() { _loading = true; _error = null; });
+    if (opCode == null || opCode.isEmpty || !mounted) return;
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
       final resp = await _service.fetchBatchAudit(
         serialNumber: serial,
         operatorCode: opCode,
         attendantId: attendantId,
       );
+      if (!mounted) return;
       setState(() => _report = resp);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _friendlyErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
+  Future<void> _printBatchAudit() async {
+    final report = _report;
+    if (report == null || _printing) return;
+
+    setState(() => _printing = true);
+    try {
       final pos = context.read<PosProvider>();
-      final attendant = (_report!['attendant'] as Map?)?.cast<String, dynamic>();
-      final device = (_report!['device'] as Map?)?.cast<String, dynamic>();
-      final time = (_report!['time'] ?? '').toString();
-
-      final data = (_report!['data'] as List?)?.cast<Map>() ?? const [];
-      final items = data.map<Map<String, String>>((m) => {
-            'transaction_type_name': (m['transaction_type_name'] ?? '').toString(),
-            'currency_name': (m['currency_name'] ?? '').toString(),
-            'currency_symbol': (m['currency_symbol'] ?? '').toString(),
-            'total_quantity_kgs': (m['total_quantity_kgs'] ?? '').toString(),
-            'total_value': (m['total_value'] ?? '').toString(),
-          }).toList();
-      final summary = (_report!['summary'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+      final attendant = (report['attendant'] as Map?)?.cast<String, dynamic>();
+      final device = (report['device'] as Map?)?.cast<String, dynamic>();
+      final time = (report['time'] ?? '').toString();
+      final data = (report['data'] as List?)?.cast<Map>() ?? const [];
+      final items = data
+          .map<Map<String, String>>(
+            (m) => {
+              'transaction_type_name': (m['transaction_type_name'] ?? '').toString(),
+              'currency_name': (m['currency_name'] ?? '').toString(),
+              'currency_symbol': (m['currency_symbol'] ?? '').toString(),
+              'total_quantity_kgs': _formatNumber(m['total_quantity_kgs']),
+              'total_value': _formatNumber(m['total_value']),
+            },
+          )
+          .toList();
+      final rawSummary = (report['summary'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
+      final summary = <String, dynamic>{
+        ...rawSummary,
+        'total_quantity_kgs': _formatNumber(rawSummary['total_quantity_kgs']),
+      };
 
       await pos.printBatchAuditReceipt(
         title: 'BATCH AUDIT',
@@ -84,81 +115,594 @@ class _BatchAuditScreenState extends State<BatchAuditScreen> {
       final success = context.read<PosProvider>().lastError == null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'Printed batch audit' : 'Printing failed'),
+          content: Text(success ? 'Batch audit printed' : 'Printing failed'),
           backgroundColor: success ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(12),
         ),
       );
-    } catch (e) {
-      setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _printing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Batch Audit'),
-        backgroundColor: AppColors.primary,
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _loadAndPrint,
-            icon: const Icon(Icons.print),
-            tooltip: 'Reprint',
-          )
-        ],
-      ),
+      backgroundColor: const Color(0xFFF7F7F7),
+      appBar: _buildAppBar(),
       body: _buildBody(),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return Center(child: Text(_error!, style: const TextStyle(color: AppColors.error)));
-    if (_report == null) return const Center(child: Text('No audit loaded'));
-
-    final a = (_report!['attendant'] as Map?) ?? const {};
-    final d = (_report!['device'] as Map?) ?? const {};
-    final s = (_report!['summary'] as Map?) ?? const {};
-    final time = (_report!['time'] ?? '').toString();
-    final rows = (_report!['data'] as List?)?.cast<Map>() ?? const [];
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            bottom: BorderSide(color: Color(0xFFE8E8E8), width: 1),
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
           child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
               children: [
-                const Text('BATCH AUDIT', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text('Station: ${a['service_station_name'] ?? ''}'),
-                Text('Operator: ${(a['first_name'] ?? '')} ${(a['last_name'] ?? '')}'),
-                Text('SN: ${d['serial_number'] ?? ''}   TID: ${d['terminal_id'] ?? ''}'),
-                if (time.isNotEmpty) Text(time),
-                Text('Total Qty: ${s['total_quantity_kgs'] ?? 0} Kgs'),
-                Text('Record Count: ${s['record_count'] ?? rows.length}'),
-                const Divider(),
-                ...rows.map((r) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,
+                    color: Color(0xFF0D2B55),
+                  ),
+                  splashRadius: 20,
+                  tooltip: 'Back',
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D2B55),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.list_alt_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${r['transaction_type_name'] ?? ''} (${r['currency_name'] ?? ''})', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text('Quantity: ${r['total_quantity_kgs'] ?? ''} Kgs'),
-                      Text('Value: ${(r['currency_symbol'] ?? '')}${r['total_value'] ?? ''}'),
-                      const Divider(),
+                      Text(
+                        'Batch Audit',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D2B55),
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      Text(
+                        'Batch Summary',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF888888),
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
                     ],
                   ),
-                )),
+                ),
+                IconButton(
+                  onPressed: _loading ? null : _loadBatchAudit,
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF0D2B55),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.refresh_rounded,
+                          size: 20,
+                          color: Color(0xFF0D2B55),
+                        ),
+                  splashRadius: 20,
+                  tooltip: 'Refresh',
+                ),
               ],
             ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading && _report == null) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFF0D2B55),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Fetching batch audit...',
+              style: TextStyle(fontSize: 13, color: Color(0xFF888888)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: _ErrorCard(message: _error!, onRetry: _loadBatchAudit),
+        ),
+      );
+    }
+
+    if (_report == null) {
+      return const Center(
+        child: Text(
+          'No audit data available.',
+          style: TextStyle(color: Color(0xFF888888), fontSize: 13),
+        ),
+      );
+    }
+
+    final report = _report!;
+    final attendant = (report['attendant'] as Map?) ?? const {};
+    final device = (report['device'] as Map?) ?? const {};
+    final summary = (report['summary'] as Map?) ?? const {};
+    final time = (report['time'] ?? '').toString();
+    final rows = (report['data'] as List?)?.cast<Map>() ?? const [];
+
+    return RefreshIndicator(
+      onRefresh: _loadBatchAudit,
+      color: const Color(0xFF0D2B55),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+        children: [
+          _AuditSummaryStrip(
+            totalQty: '${_formatNumber(summary['total_quantity_kgs'])} Kg',
+            recordCount: '${summary['record_count'] ?? rows.length} records',
+            station: _value(attendant['service_station_name']),
+          ),
+          const SizedBox(height: 10),
+          _ReceiptCard(
+            title: 'BATCH OVERVIEW',
+            status: 'Loaded',
+            statusColor: const Color(0xFF2ECC71),
+            rows: [
+              _RowData(
+                'Operator',
+                '${_value(attendant['first_name'])} ${_value(attendant['last_name'])}'.trim(),
+              ),
+              _RowData('Serial Number', _value(device['serial_number'])),
+              _RowData('Terminal ID', _value(device['terminal_id'])),
+              _RowData('Date', _formatCompactTime(time)),
+              _RowData(
+                'Total Quantity',
+                '${_formatNumber(summary['total_quantity_kgs'])} Kg',
+                bold: true,
+              ),
+              _RowData(
+                'Record Count',
+                '${summary['record_count'] ?? rows.length}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...rows.map(
+            (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ReceiptCard(
+                title:
+                    '${_value(row['transaction_type_name'])} (${_value(row['currency_name'])})',
+                status: 'Subtotal',
+                statusColor: const Color(0xFF0D2B55),
+                rows: [
+                  _RowData(
+                    'Quantity',
+                    '${_formatNumber(row['total_quantity_kgs'])} Kg',
+                  ),
+                  _RowData(
+                    'Value',
+                    '${_value(row['currency_symbol'])}${_formatNumber(row['total_value'])}',
+                    bold: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          _PrintButton(
+            printing: _printing,
+            onPressed: _printing ? null : _printBatchAudit,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Verify details before printing.',
+            style: TextStyle(fontSize: 11, color: Color(0xFFAAAAAA)),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _value(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty) return '--';
+    return text;
+  }
+
+  String _formatNumber(dynamic value) {
+    if (value == null) return '0.00';
+    if (value is num) return value.toDouble().toStringAsFixed(2);
+    final parsed = double.tryParse(value.toString().trim());
+    if (parsed == null) return '0.00';
+    return parsed.toStringAsFixed(2);
+  }
+
+  String _formatCompactTime(String value) {
+    final text = value.trim();
+    if (text.isEmpty || text == '--') return '--';
+    try {
+      final parsed = DateTime.parse(text);
+      return DateFormat('dd MMM, HH:mm').format(parsed);
+    } catch (_) {
+      return text.length > 16 ? text.substring(0, 16) : text;
+    }
+  }
+
+  String _friendlyErrorMessage(Object error) {
+    final message = ErrorUtils.extractErrorMessage(
+      error,
+      fallback: 'Unable to load the batch audit right now.',
+    );
+    final normalized = message.toLowerCase();
+    if (normalized.contains('lost internet connection') ||
+        normalized.contains('failed to finish the process') ||
+        normalized.contains('timeout')) {
+      return 'Please check your network connection and try again.';
+    }
+    return message;
+  }
+}
+
+class _AuditSummaryStrip extends StatelessWidget {
+  final String totalQty;
+  final String recordCount;
+  final String station;
+
+  const _AuditSummaryStrip({
+    required this.totalQty,
+    required this.recordCount,
+    required this.station,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D2B55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TOTAL QUANTITY',
+                  style: TextStyle(
+                    fontSize: 9,
+                    letterSpacing: 1.2,
+                    color: Color(0xFFB7C3D6),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  totalQty,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _Tag(recordCount),
+                    _Tag(station),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
+  const _Tag(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          color: Color(0xFFCCCCCC),
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _RowData {
+  final String label;
+  final String value;
+  final bool bold;
+
+  const _RowData(this.label, this.value, {this.bold = false});
+}
+
+class _ReceiptCard extends StatelessWidget {
+  final String title;
+  final String status;
+  final Color statusColor;
+  final List<_RowData> rows;
+
+  const _ReceiptCard({
+    required this.title,
+    required this.status,
+    required this.statusColor,
+    required this.rows,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 1.0,
+                      color: Color(0xFF666666),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  status,
+                  style: TextStyle(fontSize: 10, color: statusColor),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: rows.length,
+            separatorBuilder: (_, __) => const Divider(
+              height: 1,
+              color: Color(0xFFF5F5F5),
+              indent: 14,
+              endIndent: 14,
+            ),
+            itemBuilder: (context, i) {
+              final row = rows[i];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        row.label,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF888888),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      row.value,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: const Color(0xFF0D2B55),
+                        fontWeight:
+                            row.bold ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrintButton extends StatelessWidget {
+  final bool printing;
+  final VoidCallback? onPressed;
+
+  const _PrintButton({
+    required this.printing,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 46,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0D2B55),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: printing
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.print_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Print Batch Audit',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorCard({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.error,
+            size: 28,
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Unable to Load Batch Audit',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0D2B55),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF888888),
+              height: 1.35,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 40,
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2B55),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Try Again',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

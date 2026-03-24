@@ -11,6 +11,10 @@ class CheckUpdatesScreen extends StatefulWidget {
 }
 
 class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyBg = Color(0xFFF0F4FA);
+  static const _navyMuted = Color(0xFF6B80A0);
+
   bool _isChecking = false;
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
@@ -26,6 +30,7 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
 
   Future<void> _loadCurrentVersion() async {
     final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
     setState(() {
       _currentVersion = packageInfo.version;
       _currentBuildNumber = packageInfo.buildNumber;
@@ -61,7 +66,6 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
   Future<void> _downloadAndInstall() async {
     if (_updateInfo == null) return;
 
-    // Validate download URL before attempting download
     final downloadUrl = _updateInfo!['downloadUrl'] as String? ?? '';
     if (downloadUrl.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,9 +90,7 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
       downloadUrl,
       (progress) {
         if (mounted) {
-          setState(() {
-            _downloadProgress = progress;
-          });
+          setState(() => _downloadProgress = progress);
         }
       },
     );
@@ -99,392 +101,364 @@ class _CheckUpdatesScreenState extends State<CheckUpdatesScreen> {
       _isDownloading = false;
     });
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Update downloaded! Please install the APK.'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 5),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Update downloaded. Please install the APK.'
+              : 'Failed to download update. Check your internet connection and try again.',
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Failed to download update. Check your internet connection and try again. Check logs for details.',
-          ),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
-    }
+        backgroundColor: success ? AppColors.success : AppColors.error,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Check for Updates',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      backgroundColor: _navyBg,
+      appBar: _buildAppBar(context),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+        children: [
+          const Text(
+            'UPDATES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: _navyMuted,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildVersionCard(),
+          const SizedBox(height: 10),
+          _buildActionTile(),
+          if (_updateInfo != null) ...[
+            const SizedBox(height: 10),
+            _buildUpdateStatusCard(),
+          ],
+          const SizedBox(height: 10),
+          _buildInfoCard(),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _navy,
+          border: Border(
+            bottom: BorderSide(color: Color(0x22FFFFFF), width: 1),
           ),
         ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Current Version Card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.info_outline,
-                            color: AppColors.primary,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Current Version',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF6B7280),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'GASMAN',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Version:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                        Text(
-                          _currentVersion.isEmpty ? 'Loading...' : _currentVersion,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Build Number:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                        Text(
-                          _currentBuildNumber.isEmpty ? 'Loading...' : _currentBuildNumber,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Check for Updates Button
-              SizedBox(
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _isChecking || _isDownloading ? null : _checkForUpdates,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,
+                    color: Colors.white,
                   ),
-                  icon: _isChecking
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Icon(Icons.system_update_alt, size: 24),
-                  label: Text(
-                    _isChecking ? 'Checking...' : 'Check for Updates',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  splashRadius: 20,
                 ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Update Status Card
-              if (_updateInfo != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
-                    color: _updateInfo!['updateAvailable'] == true
-                        ? const Color(0xFF10B981).withOpacity(0.1)
-                        : const Color(0xFF6B7280).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _updateInfo!['updateAvailable'] == true
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFF6B7280),
-                      width: 1.5,
-                    ),
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: const Icon(
+                    Icons.system_update_alt_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            _updateInfo!['updateAvailable'] == true
-                                ? Icons.celebration
-                                : Icons.check_circle,
-                            color: _updateInfo!['updateAvailable'] == true
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFF6B7280),
-                            size: 32,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _updateInfo!['updateAvailable'] == true
-                                  ? 'Update Available!'
-                                  : 'You\'re Up to Date',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: _updateInfo!['updateAvailable'] == true
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFF6B7280),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        'Check for Updates',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                      if (_updateInfo!['updateAvailable'] == true) ...[
-                        const SizedBox(height: 20),
-                        const Divider(height: 1),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Latest Version:',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                            Text(
-                              _updateInfo!['latestVersion'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'App version & downloads',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0x99FFFFFF),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'What\'s New:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _updateInfo!['releaseNotes'] ?? 'Bug fixes and improvements',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (_isDownloading) ...[
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Downloading...',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF1A1A1A),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF1A1A1A),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: LinearProgressIndicator(
-                                  value: _downloadProgress,
-                                  minHeight: 8,
-                                  backgroundColor: Colors.grey[300],
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ] else ...[
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: _downloadAndInstall,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              icon: const Icon(Icons.download, size: 20),
-                              label: const Text(
-                                'Download & Install',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
                     ],
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              const SizedBox(height: 24),
+  Widget _buildVersionCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            _valueRow('Current Version', _currentVersion.isEmpty ? 'Loading...' : _currentVersion),
+            const SizedBox(height: 10),
+            _valueRow(
+              'Build Number',
+              _currentBuildNumber.isEmpty ? 'Loading...' : _currentBuildNumber,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-              // Information Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0EA5E9).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF0EA5E9).withOpacity(0.3),
-                    width: 1,
+  Widget _buildActionTile() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        dense: true,
+        visualDensity: const VisualDensity(vertical: -1),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: CircleAvatar(
+          radius: 18,
+          backgroundColor: AppColors.primary.withOpacity(0.08),
+          child: _isChecking
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(
+                  Icons.system_update_alt_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+        ),
+        title: Text(
+          _isChecking ? 'Checking for Updates...' : 'Check for Updates',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        subtitle: const Text(
+          'Check whether a newer app version is available',
+          style: TextStyle(fontSize: 12),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: _isChecking || _isDownloading ? null : _checkForUpdates,
+      ),
+    );
+  }
+
+  Widget _buildUpdateStatusCard() {
+    final updateAvailable = _updateInfo!['updateAvailable'] == true;
+    final accent = updateAvailable ? AppColors.success : _navyMuted;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: accent.withOpacity(0.12),
+                  child: Icon(
+                    updateAvailable ? Icons.download_done_rounded : Icons.check_circle_rounded,
+                    color: accent,
+                    size: 18,
                   ),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: const Color(0xFF0EA5E9),
-                      size: 20,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    updateAvailable ? 'Update Available' : 'You are Up to Date',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Updates will be downloaded from our secure server. After downloading, you\'ll be prompted to install the new version.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: const Color(0xFF0EA5E9).withOpacity(0.9),
-                          height: 1.5,
-                        ),
+                  ),
+                ),
+              ],
+            ),
+            if (updateAvailable) ...[
+              const SizedBox(height: 12),
+              _valueRow('Latest Version', (_updateInfo!['latestVersion'] ?? '--').toString()),
+              const SizedBox(height: 10),
+              const Text(
+                'Release Notes',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _navy,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                (_updateInfo!['releaseNotes'] ?? 'Bug fixes and improvements').toString(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: _navyMuted,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_isDownloading) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Downloading',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _navy,
+                      ),
+                    ),
+                    Text(
+                      '${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _navy,
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: _downloadProgress,
+                    minHeight: 8,
+                    backgroundColor: const Color(0xFFE8EDF5),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                ),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _downloadAndInstall,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text(
+                      'Download & Install',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Color(0x140D2B55),
+              child: Icon(Icons.info_outline_rounded, color: _navy, size: 18),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Updates are downloaded from the secure server. After the download completes, install the APK to finish the update.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _navyMuted,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _valueRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: _navyMuted,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: _navy,
+          ),
+        ),
+      ],
     );
   }
 }

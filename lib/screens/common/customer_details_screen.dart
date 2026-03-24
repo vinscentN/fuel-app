@@ -4,7 +4,6 @@ import '../../models/customer.dart';
 import '../../services/customer_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/colors.dart';
-import '../../widgets/common/custom_button.dart';
 
 class CustomerDetailsScreen extends StatefulWidget {
   final String title;
@@ -36,6 +35,10 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
   bool _isProcessing = false;
   bool _showCustomerCapture = false;
 
+  static const _navy = Color(0xFF0D2B55);
+  static const _navyBg = Color(0xFFF0F4FA);
+  static const _navyMuted = Color(0xFF6B80A0);
+
   @override
   void dispose() {
     _searchPhoneController.dispose();
@@ -50,46 +53,32 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
     final name = _searchNameController.text.trim();
 
     if (phone.isEmpty && name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a phone number or name to search'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      _showSnack('Please enter a phone number or name to search',
+          isError: true);
       return;
     }
 
     setState(() => _isSearching = true);
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.token;
+      final token =
+          Provider.of<AuthProvider>(context, listen: false).token;
+      if (token == null) throw Exception('Not authenticated');
 
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
+      String q = phone.isNotEmpty && name.isNotEmpty
+          ? '$phone $name'
+          : phone.isNotEmpty
+          ? phone
+          : name;
 
-      // Build search query - combine phone and name if both provided
-      String searchQuery = '';
-      if (phone.isNotEmpty && name.isNotEmpty) {
-        searchQuery = '$phone $name';
-      } else if (phone.isNotEmpty) {
-        searchQuery = phone;
-      } else {
-        searchQuery = name;
-      }
-
-      final customers = await _customerService.getCustomers(
-        searchQuery: searchQuery,
-        token: token,
-      );
+      final customers =
+      await _customerService.getCustomers(searchQuery: q, token: token);
 
       setState(() {
         _isSearching = false;
         _searchResults = customers;
 
         if (customers.isEmpty) {
-          // No customer found, show new customer form
           _selectedCustomer = null;
           _showSearchResults = false;
           _showNewCustomerForm = true;
@@ -97,13 +86,11 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
           _phoneController.text = phone;
           _customerType = 'Individual';
         } else if (customers.length == 1) {
-          // Single customer found, auto-select
           _selectedCustomer = customers.first;
           _showSearchResults = false;
           _showNewCustomerForm = false;
           _populateCustomerData(_selectedCustomer!);
         } else {
-          // Multiple customers found, show selection list
           _selectedCustomer = null;
           _showSearchResults = true;
           _showNewCustomerForm = false;
@@ -117,24 +104,15 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
         _showSearchResults = false;
         _showNewCustomerForm = true;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Search failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (mounted) _showSnack('Search failed: ${e.toString()}', isError: true);
     }
   }
 
   void _populateCustomerData(Customer customer) {
     _nameController.text = customer.name;
     _phoneController.text = customer.phone;
-    _customerType = customer.customerType.isNotEmpty
-        ? customer.customerType
-        : 'Individual';
+    _customerType =
+    customer.customerType.isNotEmpty ? customer.customerType : 'Individual';
   }
 
   void _selectCustomer(Customer customer) {
@@ -149,67 +127,41 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
 
   void _skipCustomerDetails() {
     if (_isProcessing) return;
-
     setState(() => _isProcessing = true);
-    // Return empty data to proceed to transaction without customer details
-    Navigator.of(context).pop({
-      'customerId': null,
-      'customerData': null,
-    });
+    Navigator.of(context).pop({'customerId': null, 'customerData': null});
   }
 
   void _cancelTransaction() {
     if (_isProcessing) return;
-
     setState(() => _isProcessing = true);
-    // Pop back to amount input screen (2 screens back)
-    // This will take user from: CustomerDetails -> PaymentMethod -> AmountInput
     Navigator.of(context).popUntil((route) {
-      // Check if we've reached the amount input screen or if we've gone back enough
       return route.settings.name == '/amount_input' ||
-             !Navigator.of(context).canPop();
+          !Navigator.of(context).canPop();
     });
   }
 
   void _confirmCustomerDetails() {
     if (_isProcessing) return;
-
     setState(() => _isProcessing = true);
 
     if (_selectedCustomer != null) {
-      // Return existing customer ID
-      Navigator.of(context).pop({
-        'customerId': _selectedCustomer!.id,
-        'customerData': null,
-      });
+      Navigator.of(context)
+          .pop({'customerId': _selectedCustomer!.id, 'customerData': null});
     } else if (_showNewCustomerForm) {
-      // Validate new customer form
       final name = _nameController.text.trim();
       final phone = _phoneController.text.trim();
 
       if (name.isEmpty) {
         setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter customer name'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        _showSnack('Please enter customer name', isError: true);
         return;
       }
-
       if (phone.isEmpty) {
         setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter a phone number'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        _showSnack('Please enter a phone number', isError: true);
         return;
       }
 
-      // Return new customer data
       Navigator.of(context).pop({
         'customerId': null,
         'customerData': CustomerData(
@@ -220,578 +172,47 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
         ),
       });
     } else {
-      // No customer selected and form not shown - just skip
       Navigator.of(context).pop(null);
     }
   }
 
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(12),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Determine if we should show the confirm button
-    final showConfirmButton = _selectedCustomer != null || _showNewCustomerForm;
+    final showConfirmButton =
+        _selectedCustomer != null || _showNewCustomerForm;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 1,
-      ),
-      backgroundColor: AppColors.background,
+      backgroundColor: _navyBg,
+      appBar: _buildAppBar(),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (widget.subtitle != null) ...[
-                Text(
-                  widget.subtitle!,
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-              ],
+              // ── Continue without customer ──
+              _buildContinueButton(),
+              const SizedBox(height: 10),
 
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _isProcessing ? null : _skipCustomerDetails,
-                  icon: const Icon(Icons.arrow_forward, size: 22),
-                  label: const Text(
-                    'Continue',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              // ── Optional customer section ──
+              _buildCustomerSection(showConfirmButton),
+              const SizedBox(height: 10),
 
-              const SizedBox(height: 16),
-
-              Card(
-                elevation: 0.5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey[300]!),
-                ),
-                child: ExpansionTile(
-                  initiallyExpanded: _showCustomerCapture,
-                  onExpansionChanged: (expanded) {
-                    setState(() => _showCustomerCapture = expanded);
-                  },
-                  title: const Text(
-                    'Add customer details (optional)',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: const Text(
-                    'Search existing customer or create a new one',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  children: [
-
-              // Search section header
-              const Text(
-                'Search for Existing Customer',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Name search field
-              TextField(
-                controller: _searchNameController,
-                style: const TextStyle(color: Colors.black87),
-                decoration: InputDecoration(
-                  labelText: 'Customer Name',
-                  labelStyle: const TextStyle(color: Colors.black54),
-                  hintText: 'Enter customer name',
-                  hintStyle: const TextStyle(color: Colors.black38),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  prefixIcon: const Icon(Icons.person_search, color: AppColors.primary),
-                ),
-                onChanged: (value) {
-                  if (value.isEmpty && _searchPhoneController.text.isEmpty) {
-                    setState(() {
-                      _selectedCustomer = null;
-                      _showNewCustomerForm = false;
-                      _showSearchResults = false;
-                      _searchResults = [];
-                    });
-                  }
-                },
-              ),
-
-              const SizedBox(height: 12),
-
-              // Phone number search
-              TextField(
-                controller: _searchPhoneController,
-                keyboardType: TextInputType.phone,
-                style: const TextStyle(color: Colors.black87),
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  labelStyle: const TextStyle(color: Colors.black54),
-                  hintText: 'Enter phone number',
-                  hintStyle: const TextStyle(color: Colors.black38),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  prefixIcon: const Icon(Icons.phone, color: AppColors.primary),
-                ),
-                onChanged: (value) {
-                  if (value.isEmpty && _searchNameController.text.isEmpty) {
-                    setState(() {
-                      _selectedCustomer = null;
-                      _showNewCustomerForm = false;
-                      _showSearchResults = false;
-                      _searchResults = [];
-                    });
-                  }
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Search button
-              CustomButton(
-                onPressed: _isSearching ? null : _searchCustomers,
-                backgroundColor: AppColors.primary,
-                child: _isSearching
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.search, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text(
-                            'Search Customer',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Multiple search results
-              if (_showSearchResults && _searchResults.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.people, color: Colors.blue.shade700, size: 28),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Found ${_searchResults.length} Customer(s)',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Select a customer:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final customer = _searchResults[index];
-                          return InkWell(
-                            onTap: () => _selectCustomer(customer),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.person, color: AppColors.primary, size: 20),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          customer.name,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                      ),
-                                      Icon(Icons.chevron_right, color: Colors.grey[600]),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.phone, color: Colors.grey[600], size: 16),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        customer.phone,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.category, color: Colors.grey[600], size: 16),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        customer.customerType,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Existing customer found
-              if (_selectedCustomer != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green.shade200, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.green.shade700, size: 28),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Customer Found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoRow('Name', _selectedCustomer!.name),
-                      _buildInfoRow('Phone', _selectedCustomer!.phone),
-                      _buildInfoRow('Type', _selectedCustomer!.customerType),
-                    ],
-                  ),
-                ),
-              ],
-
-              // New customer form
-              if (_showNewCustomerForm && _selectedCustomer == null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.person_add, color: Colors.blue.shade700, size: 28),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'New Customer',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Name field
-                      TextField(
-                        controller: _nameController,
-                        style: const TextStyle(color: Colors.black87),
-                        decoration: InputDecoration(
-                          labelText: 'Name *',
-                          labelStyle: const TextStyle(color: Colors.black54),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                          ),
-                          prefixIcon: const Icon(Icons.person, color: Colors.black54),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Phone number field
-                      TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        style: const TextStyle(color: Colors.black87),
-                        decoration: InputDecoration(
-                          labelText: 'Phone Number *',
-                          labelStyle: const TextStyle(color: Colors.black54),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                          ),
-                          prefixIcon: const Icon(Icons.phone, color: Colors.black54),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Customer type dropdown
-                      DropdownButtonFormField<String>(
-                        value: _customerType,
-                        style: const TextStyle(color: Colors.black87),
-                        decoration: InputDecoration(
-                          labelText: 'Customer Type',
-                          labelStyle: const TextStyle(color: Colors.black54),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                          ),
-                          prefixIcon: const Icon(Icons.category, color: Colors.black54),
-                        ),
-                        items: ['Individual', 'Corporate'].map((type) {
-                          return DropdownMenuItem(
-                            value: type,
-                            child: Text(type),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _customerType = value);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              // Confirm button (only show after search)
-              if (showConfirmButton) ...[
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isProcessing ? null : _confirmCustomerDetails,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shadowColor: AppColors.primary.withOpacity(0.3),
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isProcessing
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.check_circle_outline,
-                                size: 22,
-                              ),
-                              const SizedBox(width: 12),
-                              const Flexible(
-                                child: Text(
-                                  'Use Customer & Continue',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              ],
-
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Cancel button - takes user back to amount input screen
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton(
-                  onPressed: _isProcessing ? null : _cancelTransaction,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red[700],
-                    side: BorderSide(color: Colors.red[300]!, width: 1.5),
-                    backgroundColor: Colors.red[50],
-                    disabledForegroundColor: Colors.grey[400],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.cancel_outlined,
-                        size: 20,
-                        color: _isProcessing ? Colors.grey[400] : Colors.red[700],
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Cancel Transaction',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: _isProcessing ? Colors.grey[400] : Colors.red[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
+              // ── Cancel ──
+              _buildCancelButton(),
             ],
           ),
         ),
@@ -799,28 +220,562 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+  // ── AppBar ────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(52),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _navy,
+          border: Border(
+            bottom: BorderSide(color: Color(0x22FFFFFF), width: 1),
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      size: 18, color: Colors.white),
+                  splashRadius: 20,
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.person_rounded,
+                      color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      if (widget.subtitle != null)
+                        Text(
+                          widget.subtitle!,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0x99FFFFFF),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Continue button ───────────────────────────────────────
+
+  Widget _buildContinueButton() {
+    return Material(
+      color: _navy,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _isProcessing ? null : _skipCustomerDetails,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Continue Without Customer',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Skip and proceed to transaction',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0x99FFFFFF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Colors.white54, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Customer capture section ──────────────────────────────
+
+  Widget _buildCustomerSection(bool showConfirmButton) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: _showCustomerCapture,
+          onExpansionChanged: (v) =>
+              setState(() => _showCustomerCapture = v),
+          tilePadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          leading: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _navy.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child:
+            const Icon(Icons.person_search_rounded, color: _navy, size: 17),
+          ),
+          title: const Text(
+            'Add Customer Details',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _navy,
+            ),
+          ),
+          subtitle: const Text(
+            'Optional — search or create a customer',
+            style: TextStyle(fontSize: 11, color: _navyMuted),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+          children: [
+            const Divider(height: 1, color: Color(0xFFEEF2F8)),
+            const SizedBox(height: 12),
+            _sectionLabel('SEARCH EXISTING CUSTOMER'),
+            const SizedBox(height: 8),
+            _navyTextField(
+              controller: _searchNameController,
+              label: 'Customer Name',
+              hint: 'Enter name',
+              icon: Icons.person_rounded,
+              onChanged: (v) {
+                if (v.isEmpty && _searchPhoneController.text.isEmpty) {
+                  setState(() {
+                    _selectedCustomer = null;
+                    _showNewCustomerForm = false;
+                    _showSearchResults = false;
+                    _searchResults = [];
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            _navyTextField(
+              controller: _searchPhoneController,
+              label: 'Phone Number',
+              hint: 'Enter phone',
+              icon: Icons.phone_rounded,
+              keyboardType: TextInputType.phone,
+              onChanged: (v) {
+                if (v.isEmpty && _searchNameController.text.isEmpty) {
+                  setState(() {
+                    _selectedCustomer = null;
+                    _showNewCustomerForm = false;
+                    _showSearchResults = false;
+                    _searchResults = [];
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: TextButton.icon(
+                onPressed: _isSearching ? null : _searchCustomers,
+                style: TextButton.styleFrom(
+                  backgroundColor: _navy,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: _navy.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                icon: _isSearching
+                    ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                    : const Icon(Icons.search_rounded, size: 18),
+                label: Text(
+                  _isSearching ? 'Searching...' : 'Search Customer',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+
+            // ── Multiple results ──
+            if (_showSearchResults && _searchResults.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _resultsBanner(
+                  '${_searchResults.length} customers found — tap to select'),
+              const SizedBox(height: 8),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _searchResults.length,
+                separatorBuilder: (_, __) =>
+                const SizedBox(height: 6),
+                itemBuilder: (context, i) =>
+                    _customerResultTile(_searchResults[i]),
+              ),
+            ],
+
+            // ── Customer found ──
+            if (_selectedCustomer != null) ...[
+              const SizedBox(height: 14),
+              _customerFoundCard(_selectedCustomer!),
+            ],
+
+            // ── New customer form ──
+            if (_showNewCustomerForm && _selectedCustomer == null) ...[
+              const SizedBox(height: 14),
+              _newCustomerForm(),
+            ],
+
+            // ── Confirm ──
+            if (showConfirmButton) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: TextButton.icon(
+                  onPressed:
+                  _isProcessing ? null : _confirmCustomerDetails,
+                  style: TextButton.styleFrom(
+                    backgroundColor: _navy,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _navy.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                  ),
+                  icon: _isProcessing
+                      ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                      : const Icon(Icons.check_circle_outline_rounded,
+                      size: 18),
+                  label: const Text(
+                    'Use Customer & Continue',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Cancel button ─────────────────────────────────────────
+
+  Widget _buildCancelButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: TextButton.icon(
+        onPressed: _isProcessing ? null : _cancelTransaction,
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFCC3333),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: Color(0xFFEEC0C0)),
+          ),
+          backgroundColor: const Color(0xFFFFF5F5),
+        ),
+        icon: const Icon(Icons.cancel_outlined, size: 17),
+        label: const Text(
+          'Cancel Transaction',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        color: _navyMuted,
+        letterSpacing: 1.1,
+      ),
+    );
+  }
+
+  Widget _resultsBanner(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _navy.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _navy.withOpacity(0.1)),
+      ),
       child: Row(
+        children: [
+          const Icon(Icons.people_rounded, color: _navy, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              color: _navy,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _customerResultTile(Customer customer) {
+    return Material(
+      color: const Color(0xFFF8FAFD),
+      borderRadius: BorderRadius.circular(9),
+      child: InkWell(
+        onTap: () => _selectCustomer(customer),
+        borderRadius: BorderRadius.circular(9),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _navy.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child:
+                const Icon(Icons.person_rounded, color: _navy, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(customer.name,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _navy)),
+                    Text(customer.phone,
+                        style: const TextStyle(
+                            fontSize: 11, color: _navyMuted)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: _navyMuted, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _customerFoundCard(Customer customer) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FAF4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFB6DFC5)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF2ECC71), size: 16),
+              const SizedBox(width: 6),
+              const Text(
+                'Customer Found',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A7A40),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _infoRow('Name', customer.name),
+          _infoRow('Phone', customer.phone),
+          _infoRow('Type', customer.customerType),
+        ],
+      ),
+    );
+  }
+
+  Widget _newCustomerForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _resultsBanner('No customer found — fill in details below'),
+        const SizedBox(height: 10),
+        _navyTextField(
+          controller: _nameController,
+          label: 'Name *',
+          hint: 'Full name',
+          icon: Icons.person_rounded,
+        ),
+        const SizedBox(height: 8),
+        _navyTextField(
+          controller: _phoneController,
+          label: 'Phone Number *',
+          hint: 'e.g. 0771234567',
+          icon: Icons.phone_rounded,
+          keyboardType: TextInputType.phone,
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _customerType,
+          style: const TextStyle(color: _navy, fontSize: 13),
+          decoration: _navyInputDecoration(
+              label: 'Customer Type', icon: Icons.category_rounded),
+          items: ['Individual', 'Corporate']
+              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) setState(() => _customerType = v);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _navyTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: _navy, fontSize: 13),
+      onChanged: onChanged,
+      decoration: _navyInputDecoration(label: label, hint: hint, icon: icon),
+    );
+  }
+
+  InputDecoration _navyInputDecoration({
+    required String label,
+    String? hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle:
+      const TextStyle(color: _navyMuted, fontSize: 12),
+      hintStyle:
+      const TextStyle(color: Color(0xFFBBCCDD), fontSize: 12),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: Color(0xFFE0E8F0)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: Color(0xFFE0E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: _navy, width: 1.5),
+      ),
+      prefixIcon: Icon(icon, color: _navyMuted, size: 18),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
           SizedBox(
-            width: 80,
+            width: 50,
             child: Text(
               '$label:',
               style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black54,
-              ),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _navyMuted),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 12, color: _navy),
             ),
           ),
         ],
