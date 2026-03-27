@@ -289,7 +289,7 @@ class _LandingMenuScreenState extends State<LandingMenuScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'GASMAN',
+                        'GASMATE',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -562,7 +562,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('GASMAN',
+                          Text('GASMATE',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
