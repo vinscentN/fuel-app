@@ -78,8 +78,10 @@ class _LastSaleScreenState extends State<LastSaleScreen> {
         total: (data['total'] ?? '').toString(),
         payment: (data['payment'] ?? '').toString(),
         cardNo: (data['cardNo'] ?? '').toString(),
+        receiptNo: _receiptNo(data),
         authNo: (data['authNo'] ?? '').toString(),
         rrn: (data['rrn'] ?? '').toString(),
+        qrData: _qrData(data),
       );
       if (!mounted) return;
       final success = context.read<PosProvider>().lastError == null;
@@ -260,6 +262,7 @@ class _LastSaleScreenState extends State<LastSaleScreen> {
               _RowData('Price / Kg', _value(data['pricePerLitre'])),
               _RowData('Total', _value(data['total']), bold: true),
               _RowData('Payment', _value(data['payment'])),
+              _RowData('Receipt No.', _receiptNo(data)),
               _RowData('Auth No.', _value(data['authNo'])),
               _RowData('RRN', _value(data['rrn'])),
             ],
@@ -283,6 +286,17 @@ class _LastSaleScreenState extends State<LastSaleScreen> {
   String _value(dynamic value) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? '--' : text;
+  }
+
+  String _receiptNo(Map<String, dynamic> data) {
+    final fiscal = data['fiscalisation'] as Map?;
+    final fiscalData = fiscal?['data'] as Map?;
+    return _value(fiscalData?['receiptID']);
+  }
+
+  String _qrData(Map<String, dynamic> data) {
+    final fiscal = data['fiscalisation'] as Map?;
+    return (fiscal?['qrData'] ?? '').toString();
   }
 
   String _friendlyErrorMessage(Object error) {

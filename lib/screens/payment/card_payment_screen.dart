@@ -330,6 +330,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
       if (r != null && r.isNotEmpty) {
         final unit = _unitShort(fuelProvider.selectedProduct?.unitOfMeasure);
         final operatorName = (r['attendant'] ?? authProvider.currentUser?.fullName ?? '').toString();
+        final fiscalData = (r['fiscalisation'] as Map?)?['data'] as Map?;
+        final receiptNo = (fiscalData?['receiptID'] ?? '').toString();
+        final qrData = ((r['fiscalisation'] as Map?)?['qrData'] ?? '').toString();
         await posProvider.printReceiptCopy(copyType: 'CUSTOMER COPY', 
           stationName: (r['stationName'] ?? '').toString(),
           address: (r['address'] ?? '').toString(),
@@ -344,8 +347,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen>
           total: (r['total'] ?? '').toString(),
           payment: (r['payment'] ?? '').toString(),
           cardNo: (r['cardNo'] ?? _cardPanMasked ?? '').toString(),
+          receiptNo: receiptNo,
           authNo: (r['authNo'] ?? '').toString(),
           rrn: (r['rrn'] ?? '').toString(),
+          qrData: qrData,
           operatorName: operatorName,
         );
         return;

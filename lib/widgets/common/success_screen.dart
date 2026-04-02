@@ -200,6 +200,9 @@ class _SuccessScreenState extends State<SuccessScreen>
                               final r = payment.receiptData;
                               if (r != null && r.isNotEmpty) {
                                 final unit = _unitShort(fuel.selectedProduct?.unitOfMeasure);
+                                final fiscalData = (r['fiscalisation'] as Map?)?['data'] as Map?;
+                                final receiptNo = (fiscalData?['receiptID'] ?? '').toString();
+                                final qrData = ((r['fiscalisation'] as Map?)?['qrData'] ?? '').toString();
                                 await pos.printReceiptCopy(
                                   copyType: 'MERCHANT COPY',
                                   stationName: (r['stationName'] ?? auth.currentUser?.serviceStationName ?? 'Fuel Station').toString(),
@@ -215,8 +218,10 @@ class _SuccessScreenState extends State<SuccessScreen>
                                   total: (r['total'] ?? fuel.selectedAmount.toStringAsFixed(2)).toString(),
                                   payment: (r['payment'] ?? payment.selectedPaymentMethod?.name ?? '').toString(),
                                   cardNo: (r['cardNo'] ?? '').toString(),
+                                  receiptNo: receiptNo,
                                   authNo: (r['authNo'] ?? payment.currentTransaction?.referenceNumber ?? '').toString(),
                                   rrn: (r['rrn'] ?? payment.currentTransaction?.id ?? '').toString(),
+                                  qrData: qrData,
                                   operatorName: (r['attendant'] ?? auth.currentUser?.fullName ?? '').toString(),
                                 );
                               } else {

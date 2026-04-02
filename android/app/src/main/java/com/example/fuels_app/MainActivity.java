@@ -564,19 +564,21 @@ public class MainActivity extends FlutterActivity {
                 String total = (String) args.get("total");
                 String payment = (String) args.get("payment");
                 String cardNo = (String) args.get("cardNo");
+                String receiptNo = (String) args.get("receiptNo");
                 String authNo = (String) args.get("authNo");
                 String rrn = (String) args.get("rrn");
+                String qrData = (String) args.get("qrData");
                 String operatorName = (String) args.get("operator");
 
                 if (unit == null || unit.trim().isEmpty()) unit = "L";
 
                 printReceipt("MERCHANT COPY", stationName, address, phone, date, time,
                         pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
-                        cardNo, authNo, rrn);
+                        cardNo, receiptNo, authNo, rrn, qrData);
 
                 printReceipt("CUSTOMER COPY", stationName, address, phone, date, time,
                         pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
-                        cardNo, authNo, rrn);
+                        cardNo, receiptNo, authNo, rrn, qrData);
 
                 runOnUiThread(() -> result.success("Merchant & Customer receipts printed"));
             } catch (Exception e) {
@@ -602,15 +604,17 @@ public class MainActivity extends FlutterActivity {
                 String total = (String) args.get("total");
                 String payment = (String) args.get("payment");
                 String cardNo = (String) args.get("cardNo");
+                String receiptNo = (String) args.get("receiptNo");
                 String authNo = (String) args.get("authNo");
                 String rrn = (String) args.get("rrn");
+                String qrData = (String) args.get("qrData");
                 String operatorName = (String) args.get("operator");
 
                 if (unit == null || unit.trim().isEmpty()) unit = "L";
 
                 printReceipt(copyType, stationName, address, phone, date, time,
                         pumpNo, operatorName, product, unit, litres, pricePerLitre, total, payment,
-                        cardNo, authNo, rrn);
+                        cardNo, receiptNo, authNo, rrn, qrData);
 
                 runOnUiThread(() -> result.success(copyType + " printed"));
             } catch (Exception e) {
@@ -622,7 +626,8 @@ public class MainActivity extends FlutterActivity {
     private void printReceipt(String copyType, String stationName, String address, String phone,
                               String date, String time, String pumpNo, String operatorName,
                               String product, String unit, String litres, String pricePerLitre, String total,
-                              String payment, String cardNo, String authNo, String rrn) {
+                              String payment, String cardNo, String receiptNo, String authNo, String rrn,
+                              String qrData) {
 
         PrinterApi.PrnClrBuff_Api();
         PrinterApi.PrnFontSet_Api(24, 24, 0);
@@ -653,9 +658,14 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnStr_Api("--------------------------------");
         PrinterApi.PrnStr_Api("Payment: " + payment);
-        PrinterApi.PrnStr_Api("Card No: " + cardNo);
+        if (receiptNo != null && !receiptNo.trim().isEmpty()) {
+            PrinterApi.PrnStr_Api("Receipt No: " + receiptNo);
+        } else if (cardNo != null && !cardNo.trim().isEmpty()) {
+            PrinterApi.PrnStr_Api("Card No: " + cardNo);
+        }
         PrinterApi.PrnStr_Api("Auth No: " + authNo);
         PrinterApi.PrnStr_Api("RRN: " + rrn);
+        printFiscalVerification(qrData);
         PrinterApi.PrnStr_Api("\n");
         PrinterApi.PrnStr_Api(centerText("*** Thank You ***"));
         PrinterApi.PrnStr_Api("\n");
@@ -913,11 +923,13 @@ public class MainActivity extends FlutterActivity {
                 String total = safeStr(args.get("total"));
                 String payment = safeStr(args.get("payment"));
                 String cardNo = safeStr(args.get("cardNo"));
+                String receiptNo = safeStr(args.get("receiptNo"));
                 String authNo = safeStr(args.get("authNo"));
                 String rrn = safeStr(args.get("rrn"));
+                String qrData = safeStr(args.get("qrData"));
 
                 printSingleReceipt(title, stationName, address, phone, date, time,
-                        pumpNo, product, unit, litres, pricePerLitre, total, payment, cardNo, authNo, rrn);
+                        pumpNo, product, unit, litres, pricePerLitre, total, payment, cardNo, receiptNo, authNo, rrn, qrData);
                 runOnUiThread(() -> result.success("last sale printed"));
             } catch (Exception e) {
                 Log.e(TAG, "LastSale print error", e);
@@ -929,7 +941,8 @@ public class MainActivity extends FlutterActivity {
     private void printSingleReceipt(String title, String stationName, String address, String phone,
                                     String date, String time, String pumpNo,
                                     String product, String unit, String litres, String pricePerLitre, String total,
-                                    String payment, String cardNo, String authNo, String rrn) {
+                                    String payment, String cardNo, String receiptNo, String authNo, String rrn,
+                                    String qrData) {
         PrinterApi.PrnClrBuff_Api();
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnSetGray_Api(15);
@@ -958,9 +971,14 @@ public class MainActivity extends FlutterActivity {
         PrinterApi.PrnFontSet_Api(24, 24, 0);
         PrinterApi.PrnStr_Api("--------------------------------");
         PrinterApi.PrnStr_Api("Payment: " + payment);
-        if (cardNo != null && !cardNo.isEmpty()) PrinterApi.PrnStr_Api("Card No: " + cardNo);
+        if (receiptNo != null && !receiptNo.isEmpty()) {
+            PrinterApi.PrnStr_Api("Receipt No: " + receiptNo);
+        } else if (cardNo != null && !cardNo.isEmpty()) {
+            PrinterApi.PrnStr_Api("Card No: " + cardNo);
+        }
         if (authNo != null && !authNo.isEmpty()) PrinterApi.PrnStr_Api("Auth No: " + authNo);
         if (rrn != null && !rrn.isEmpty()) PrinterApi.PrnStr_Api("RRN: " + rrn);
+        printFiscalVerification(qrData);
         PrinterApi.PrnStr_Api("\n");
         PrinterApi.PrnStr_Api(centerText("--- END OF RECEIPT ---"));
         PrinterApi.PrnStr_Api("\n\n\n");
@@ -1497,12 +1515,18 @@ public class MainActivity extends FlutterActivity {
     }
 
     private Bitmap generateQrCode(String myCodeText) throws WriterException {
+        return generateQrCode(myCodeText, 350, ErrorCorrectionLevel.H);
+    }
+
+    private Bitmap generateQrCode(String myCodeText, int size) throws WriterException {
+        return generateQrCode(myCodeText, size, ErrorCorrectionLevel.H);
+    }
+
+    private Bitmap generateQrCode(String myCodeText, int size, ErrorCorrectionLevel correctionLevel) throws WriterException {
         Hashtable<EncodeHintType, ErrorCorrectionLevel> hintMap = new Hashtable<EncodeHintType, ErrorCorrectionLevel>();
-        hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H); // H = 30% damage
+        hintMap.put(EncodeHintType.ERROR_CORRECTION, correctionLevel);
 
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
-
-        int size = 350;
 
         BitMatrix bitMatrix = qrCodeWriter.encode(myCodeText, BarcodeFormat.QR_CODE, size, size, hintMap);
         int width = bitMatrix.getWidth();
@@ -1519,6 +1543,39 @@ public class MainActivity extends FlutterActivity {
         bmp.setPixels(pixels, 0, width, 0, 0, width, height);
 
         return bmp;
+    }
+
+    private void printFiscalVerification(String qrData) {
+        if (qrData == null || qrData.trim().isEmpty()) {
+            return;
+        }
+
+        try {
+            Bitmap qrBitmap = generateQrCode(qrData, 280, ErrorCorrectionLevel.M);
+            printCenteredLogo(qrBitmap);
+        } catch (WriterException e) {
+            Log.e(TAG, "Failed to generate fiscal QR code", e);
+        }
+
+        PrinterApi.PrnStr_Api("Verify invoice at:");
+        for (String line : wrapText(qrData, 32)) {
+            PrinterApi.PrnStr_Api(line);
+        }
+    }
+
+    private java.util.List<String> wrapText(String text, int maxWidth) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return lines;
+        }
+
+        int start = 0;
+        while (start < text.length()) {
+            int end = Math.min(start + maxWidth, text.length());
+            lines.add(text.substring(start, end));
+            start = end;
+        }
+        return lines;
     }
 
 }

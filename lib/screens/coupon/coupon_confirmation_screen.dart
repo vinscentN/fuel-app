@@ -80,6 +80,9 @@ class _CouponConfirmationScreenState extends State<CouponConfirmationScreen> {
 
       final r = payments.receiptData;
       if (r != null && r.isNotEmpty) {
+        final fiscalData = (r['fiscalisation'] as Map?)?['data'] as Map?;
+        final receiptNo = (fiscalData?['receiptID'] ?? '').toString();
+        final qrData = ((r['fiscalisation'] as Map?)?['qrData'] ?? '').toString();
         await posProvider.printReceiptCopy(
           copyType: 'CUSTOMER COPY',
           stationName: (r['stationName'] ?? auth.serviceStationName ?? 'Fuel Station').toString(),
@@ -95,8 +98,10 @@ class _CouponConfirmationScreenState extends State<CouponConfirmationScreen> {
           total: (r['total'] ?? _amount.toStringAsFixed(2)).toString(),
           payment: (r['payment'] ?? 'coupon').toString(),
           cardNo: (r['cardNo'] ?? widget.coupon.couponCode).toString(),
+          receiptNo: receiptNo,
           authNo: (r['authNo'] ?? payments.currentTransaction?.referenceNumber ?? payments.currentTransaction?.id ?? '').toString(),
           rrn: (r['rrn'] ?? payments.currentTransaction?.id ?? payments.currentTransaction?.referenceNumber ?? '').toString(),
+          qrData: qrData,
           operatorName: (r['attendant'] ?? Provider.of<AuthProvider>(context, listen: false).currentUser?.fullName ?? '').toString(),
         );
         return;

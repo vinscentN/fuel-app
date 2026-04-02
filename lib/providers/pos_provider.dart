@@ -85,8 +85,10 @@ class PosProvider extends ChangeNotifier {
     required String total,
     required String payment,
     required String cardNo,
+    String receiptNo = '',
     required String authNo,
     required String rrn,
+    String qrData = '',
     String operatorName = '',
   }) async {
     _setLoading(true);
@@ -105,8 +107,10 @@ class PosProvider extends ChangeNotifier {
         "total": total,
         "payment": payment,
         "cardNo": cardNo,
+        "receiptNo": receiptNo,
         "authNo": authNo,
         "rrn": rrn,
+        "qrData": qrData,
         "operator": operatorName,
       });
       _lastResult = {"printResult": result};
@@ -134,8 +138,10 @@ class PosProvider extends ChangeNotifier {
     required String total,
     required String payment,
     required String cardNo,
+    String receiptNo = '',
     required String authNo,
     required String rrn,
+    String qrData = '',
     String operatorName = '',
   }) async {
     _setLoading(true);
@@ -155,8 +161,10 @@ class PosProvider extends ChangeNotifier {
         "total": total,
         "payment": payment,
         "cardNo": cardNo,
+        "receiptNo": receiptNo,
         "authNo": authNo,
         "rrn": rrn,
+        "qrData": qrData,
         "operator": operatorName,
       });
       _lastResult = {"printResult": result};
@@ -352,8 +360,10 @@ class PosProvider extends ChangeNotifier {
     required String total,
     required String payment,
     required String cardNo,
+    String receiptNo = '',
     required String authNo,
     required String rrn,
+    String qrData = '',
     String title = 'LAST SALE TRANSACTION',
   }) async {
     _setLoading(true);
@@ -373,8 +383,10 @@ class PosProvider extends ChangeNotifier {
         "total": total,
         "payment": payment,
         "cardNo": cardNo,
+        "receiptNo": receiptNo,
         "authNo": authNo,
         "rrn": rrn,
+        "qrData": qrData,
       });
       _lastResult = {"printResult": result};
       _lastError = null;

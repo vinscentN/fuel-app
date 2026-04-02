@@ -223,6 +223,9 @@ class _TransactionProcessingScreenState
       final unit = _unitShort(fuel.selectedProduct?.unitOfMeasure);
 
       if (r != null && r.isNotEmpty) {
+        final fiscalData = (r['fiscalisation'] as Map?)?['data'] as Map?;
+        final receiptNo = (fiscalData?['receiptID'] ?? '').toString();
+        final qrData = ((r['fiscalisation'] as Map?)?['qrData'] ?? '').toString();
         await pos.printReceiptCopy(
           copyType: 'CUSTOMER COPY',
           stationName: (r['stationName'] ??
@@ -249,11 +252,13 @@ class _TransactionProcessingScreenState
               '')
               .toString(),
           cardNo: (r['cardNo'] ?? '').toString(),
+          receiptNo: receiptNo,
           authNo: (r['authNo'] ??
               payment.currentTransaction?.referenceNumber ??
               '')
               .toString(),
           rrn: (r['rrn'] ?? payment.currentTransaction?.id ?? '').toString(),
+          qrData: qrData,
           operatorName:
           (r['attendant'] ?? auth.currentUser?.fullName ?? '').toString(),
         );
